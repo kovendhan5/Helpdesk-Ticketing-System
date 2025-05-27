@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "Backend API for Helpdesk Ticketing System",
   "main": "src/index.js",
-  "type": "module",
-  "scripts": {
+  "type": "module",  "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
+    "setup": "node setup-db.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": ["helpdesk", "ticketing", "api", "express"],
