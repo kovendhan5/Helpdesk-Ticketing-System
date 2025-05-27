@@ -1,0 +1,17 @@
+# Terraform example variables file
+# Copy this to terraform.tfvars and fill in your values
+
+project_id = "your-gcp-project-id"
+region     = "us-central1"
+
+# Database configuration
+db_name     = "helpdesk_db"
+db_user     = "helpdesk_user"
+db_password = "your-secure-database-password"
+
+# JWT secret (generate a secure random string)
+jwt_secret = "your-super-secret-jwt-key-here"
+
+# SSH public key for VM access
+# Generate with: ssh-keygen -t rsa -b 2048
+ssh_public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQC... your-public-key"

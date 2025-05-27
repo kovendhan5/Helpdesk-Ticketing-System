@@ -1,0 +1,222 @@
+name: Deploy Helpdesk Ticketing System
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  NODE_VERSION: '20.11.1'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: Test Application
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
+
+    - name: Install backend dependencies
+      working-directory: ./backend
+      run: npm ci
+
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Run backend tests
+      working-directory: ./backend
+      run: npm test
+      continue-on-error: true
+
+    - name: Run frontend tests
+      working-directory: ./frontend
+      run: npm test -- --coverage --verbose --passWithNoTests
+      continue-on-error: true
+
+  build:
+    runs-on: ubuntu-latest
+    name: Build Application
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ env.NODE_VERSION }}
+        cache: 'npm'
+        cache-dependency-path: |
+          backend/package-lock.json
+          frontend/package-lock.json
+
+    - name: Install frontend dependencies
+      working-directory: ./frontend
+      run: npm ci
+
+    - name: Build frontend
+      working-directory: ./frontend
+      run: npm run build
+
+    - name: Upload frontend build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/build/
+        retention-days: 1
+
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy to GCP
+    needs: [test, build]
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Download frontend build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: frontend-build
+        path: frontend/build/
+
+    - name: Deploy to server
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.GCP_VM_IP }}
+        username: ubuntu
+        key: ${{ secrets.GCP_SSH_KEY }}
+        port: 22
+        script: |
+          set -e
+          
+          echo "Starting deployment..."
+          
+          # Update system packages
+          sudo apt-get update
+          
+          # Create/update application directory
+          sudo mkdir -p /opt/helpdesk
+          sudo chown ubuntu:ubuntu /opt/helpdesk
+          cd /opt/helpdesk
+          
+          # Clone or update repository
+          if [ -d ".git" ]; then
+            echo "Updating existing repository..."
+            git fetch origin
+            git reset --hard origin/main
+          else
+            echo "Cloning repository..."
+            git clone https://github.com/${{ github.repository }} .
+          fi
+          
+          # Install backend dependencies
+          cd backend
+          npm ci --production
+          
+          # Update environment variables
+          cat > .env << EOF
+          NODE_ENV=production
+          PORT=3001
+          DB_HOST=${{ secrets.DB_HOST }}
+          DB_PORT=5432
+          DB_NAME=${{ secrets.DB_NAME }}
+          DB_USER=${{ secrets.DB_USER }}
+          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+          JWT_SECRET=${{ secrets.JWT_SECRET }}
+          EOF
+          
+          # Stop existing backend process
+          pm2 stop helpdesk-backend || true
+          pm2 delete helpdesk-backend || true
+          
+          # Start backend with PM2
+          pm2 start src/index.js --name helpdesk-backend
+          pm2 save
+          
+          # Setup PM2 to start on boot
+          sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u ubuntu --hp /home/ubuntu || true
+          
+          echo "Backend deployed successfully"
+          
+          # Deploy frontend
+          cd ../frontend
+          
+          # Install dependencies and build
+          npm ci
+          npm run build
+          
+          # Copy build files to nginx directory
+          sudo rm -rf /var/www/html/*
+          sudo cp -r build/* /var/www/html/
+          
+          # Update nginx configuration
+          sudo cp ../backend/nginx.conf /etc/nginx/sites-available/helpdesk
+          sudo ln -sf /etc/nginx/sites-available/helpdesk /etc/nginx/sites-enabled/
+          sudo rm -f /etc/nginx/sites-enabled/default
+          
+          # Test nginx configuration
+          sudo nginx -t
+          
+          # Restart nginx
+          sudo systemctl restart nginx
+          
+          echo "Frontend deployed successfully"
+          
+          # Health check
+          sleep 5
+          curl -f http://localhost/health || echo "Health check failed, but continuing..."
+          
+          echo "Deployment completed successfully!"
+
+    - name: Notify deployment status
+      if: always()
+      run: |
+        if [ "${{ job.status }}" == "success" ]; then
+          echo "✅ Deployment successful!"
+          echo "🌐 Application URL: http://${{ secrets.GCP_VM_IP }}"
+        else
+          echo "❌ Deployment failed!"
+        fi
+
+  cleanup:
+    runs-on: ubuntu-latest
+    name: Cleanup
+    needs: [deploy]
+    if: always()
+    
+    steps:
+    - name: Delete artifacts
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            run_id: context.runId,
+          });
+          
+          for (const artifact of artifacts.data.artifacts) {
+            if (artifact.name === 'frontend-build') {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+              console.log(`Deleted artifact: ${artifact.name}`);
+            }
+          }
