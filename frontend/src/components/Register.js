@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -12,24 +12,103 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [passwordStrength, setPasswordStrength] = useState({
+    score: 0,
+    feedback: [],
+    isValid: false
+  });
+  const [rateLimitInfo, setRateLimitInfo] = useState(null);
+  // Password strength validation function
+  const validatePasswordStrength = (password) => {
+    const feedback = [];
+    let score = 0;
 
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-    setError(''); // Clear error when user types
+    // Length check
+    if (password.length < 12) {
+      feedback.push('Password must be at least 12 characters long');
+    } else {
+      score += 1;
+    }
+
+    // Uppercase check
+    if (!/[A-Z]/.test(password)) {
+      feedback.push('Include at least one uppercase letter');
+    } else {
+      score += 1;
+    }
+
+    // Lowercase check
+    if (!/[a-z]/.test(password)) {
+      feedback.push('Include at least one lowercase letter');
+    } else {
+      score += 1;
+    }
+
+    // Number check
+    if (!/[0-9]/.test(password)) {
+      feedback.push('Include at least one number');
+    } else {
+      score += 1;
+    }
+
+    // Special character check
+    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+      feedback.push('Include at least one special character');
+    } else {
+      score += 1;
+    }
+
+    // Common patterns check
+    const commonPatterns = [
+      /(.)\1{2,}/, // repeated characters
+      /123|abc|qwe/i, // sequential patterns
+      /password|admin|user/i // common words
+    ];
+
+    if (commonPatterns.some(pattern => pattern.test(password))) {
+      feedback.push('Avoid common patterns and repeated characters');
+    } else if (password.length >= 12) {
+      score += 1;
+    }
+
+    return {
+      score,
+      feedback,
+      isValid: score >= 5 && feedback.length === 0
+    };
   };
 
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFormData({
+      ...formData,
+      [name]: value
+    });
+    setError(''); // Clear error when user types
+    setRateLimitInfo(null);
+
+    // Validate password strength on password change
+    if (name === 'password') {
+      setPasswordStrength(validatePasswordStrength(value));
+    }
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     setError('');
     setSuccess('');
+    setRateLimitInfo(null);
 
     // Validate passwords match
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    // Validate password strength
+    if (!passwordStrength.isValid) {
+      setError('Password does not meet security requirements. Please check the requirements below.');
       setLoading(false);
       return;
     }
@@ -45,9 +124,22 @@ const Register = () => {
         navigate('/login');
       }, 2000);
     } catch (error) {
-      setError(
-        error.response?.data?.error || 'Registration failed. Please try again.'
-      );
+      const errorData = error.response?.data;
+      
+      // Handle different types of security errors
+      if (error.response?.status === 429) {
+        // Rate limited
+        setRateLimitInfo({
+          remaining: error.response.headers['x-ratelimit-remaining'] || 0,
+          resetTime: error.response.headers['x-ratelimit-reset'] || null,
+          message: errorData?.error || 'Too many registration attempts. Please try again later.'
+        });
+      } else if (errorData?.code === 'WEAK_PASSWORD') {
+        setError('Password does not meet security requirements. Please choose a stronger password.');
+      } else if (errorData?.code === 'EMAIL_EXISTS') {        setError('An account with this email already exists. Please use a different email or try logging in.');
+      } else {
+        setError(errorData?.error || 'Registration failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

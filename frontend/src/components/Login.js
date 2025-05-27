@@ -172,14 +172,15 @@ const Login = ({ onLogin }) => {
                 Sign up here
               </Link>
             </p>
-          </div>
-
-          {/* Demo accounts info */}
+          </div>          {/* Demo accounts info */}
           <div className="mt-6 p-4 bg-blue-50 rounded-md">
             <h3 className="text-sm font-medium text-blue-800 mb-2">Demo Accounts:</h3>
             <div className="text-xs text-blue-700 space-y-1">
-              <p><strong>Admin:</strong> admin@example.com / admin123</p>
-              <p><strong>User:</strong> user@example.com / user123</p>
+              <p><strong>Admin:</strong> admin@example.com</p>
+              <p><strong>User:</strong> user@example.com</p>
+              <p className="text-red-600 font-medium mt-2">
+                ⚠️ Passwords have been updated for security. Run the secure setup script to get new credentials.
+              </p>
             </div>
           </div>
         </form>
