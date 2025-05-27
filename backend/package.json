@@ -1,0 +1,24 @@
+{
+  "name": "helpdesk-backend",
+  "version": "1.0.0",
+  "description": "Backend API for Helpdesk Ticketing System",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": ["helpdesk", "ticketing", "api", "express"],
+  "author": "kovendhan p",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "pg": "^8.11.3",
+    "jsonwebtoken": "^9.0.2",
+    "bcrypt": "^5.1.1",
+    "dotenv": "^16.4.5",
+    "helmet": "^7.1.0",
+    "cors": "^2.8.5"
+  }
+}
