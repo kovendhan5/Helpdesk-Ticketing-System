@@ -32,13 +32,12 @@ async function setupDatabase() {
         'INSERT INTO users (email, password, role, created_at) VALUES ($1, $2, $3, NOW())',
         [adminEmail, hashedPassword, 'admin']
       );
-      console.log('✅ Demo admin user created:', adminEmail, '/ password:', adminPassword);
-    } else {
+      console.log('✅ Demo admin user created:', adminEmail, '/ password:', adminPassword);    } else {
       console.log('ℹ️  Demo admin user already exists:', adminEmail);
       // Update with new secure password
       const hashedPassword = await hashPassword(adminPassword, 12);
       await pool.query(
-        'UPDATE users SET password = $1, password_changed_at = NOW() WHERE email = $2',
+        'UPDATE users SET password = $1 WHERE email = $2',
         [hashedPassword, adminEmail]
       );
       console.log('✅ Demo admin password updated:', adminEmail, '/ new password:', adminPassword);
@@ -55,13 +54,12 @@ async function setupDatabase() {
         'INSERT INTO users (email, password, role, created_at) VALUES ($1, $2, $3, NOW())',
         [userEmail, hashedPassword, 'user']
       );
-      console.log('✅ Demo regular user created:', userEmail, '/ password:', userPassword);
-    } else {
+      console.log('✅ Demo regular user created:', userEmail, '/ password:', userPassword);    } else {
       console.log('ℹ️  Demo regular user already exists:', userEmail);
       // Update with new secure password
       const hashedPassword = await hashPassword(userPassword, 12);
       await pool.query(
-        'UPDATE users SET password = $1, password_changed_at = NOW() WHERE email = $2',
+        'UPDATE users SET password = $1 WHERE email = $2',
         [hashedPassword, userEmail]
       );
       console.log('✅ Demo user password updated:', userEmail, '/ new password:', userPassword);

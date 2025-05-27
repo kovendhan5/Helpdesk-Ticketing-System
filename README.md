@@ -27,11 +27,22 @@ A full-stack helpdesk ticketing system built with React, Node.js, PostgreSQL, an
 
 ### Technical Features
 - ✅ REST API with proper error handling
-- ✅ JWT-based authentication
+- ✅ JWT-based authentication with 256-bit secrets
 - ✅ Input validation and SQL injection prevention
 - ✅ HTTPS ready with security headers
 - ✅ Automated deployment pipeline
 - ✅ Infrastructure as Code (Terraform)
+
+### 🔒 Security Features
+- ✅ **Enterprise-grade Authentication**: JWT with secure 256-bit secrets
+- ✅ **Password Security**: OWASP-compliant validation (12+ chars, complexity requirements)
+- ✅ **Rate Limiting**: Configurable limits to prevent brute force attacks
+- ✅ **Account Protection**: Automatic lockout after failed login attempts
+- ✅ **Session Management**: Secure session tracking with blacklisting
+- ✅ **Input Sanitization**: XSS and injection attack prevention
+- ✅ **Security Headers**: Comprehensive HTTP security headers via Helmet.js
+- ✅ **CSRF Protection**: Cross-Site Request Forgery protection
+- ✅ **Secure Environment**: All secrets properly protected and gitignored
 
 ## 📁 Project Structure
 
@@ -334,5 +345,3 @@ This project is licensed under the MIT License.
 - [GitHub Repository](https://github.com/your-username/helpdesk-ticketing-system)
 
 ---
-
-**Built with ❤️ using GitHub Copilot and VS Code**

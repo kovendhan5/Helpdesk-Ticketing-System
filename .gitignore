@@ -8,16 +8,28 @@ yarn-error.log*
 build/
 dist/
 
-# Environment variables
+# Environment variables - CRITICAL: Never commit these!
 .env
 .env.local
 .env.development.local
 .env.test.local
 .env.production.local
+backend/.env
+frontend/.env
+
+# Database and sensitive configuration
+docker-compose.override.yml
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
 
 # Logs
 logs/
 *.log
+backend/logs/
+frontend/logs/
 
 # Runtime data
 pids/
@@ -31,13 +43,14 @@ pids/
 # Optional eslint cache
 .eslintcache
 
-# Terraform
+# Terraform sensitive files
 terraform/.terraform/
 terraform/*.tfstate
 terraform/*.tfstate.*
 terraform/.terraform.lock.hcl
 terraform/credentials.json
 terraform/terraform.tfvars
+terraform/secrets.auto.tfvars
 
 # IDE files
 .vscode/
@@ -48,6 +61,22 @@ terraform/terraform.tfvars
 
 # OS generated files
 .DS_Store
+Thumbs.db
+
+# Security and backup files
+*.backup
+*.bak
+*.tmp
+*~
+.DS_Store
+.env.backup
+secrets/
+private/
+credentials/
+
+# Docker sensitive files
+docker-compose.prod.yml
+docker-secrets/
 .DS_Store?
 ._*
 .Spotlight-V100
