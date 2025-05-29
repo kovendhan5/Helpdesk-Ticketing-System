@@ -1,104 +1,36 @@
-# 🔒 Security Configuration Guide
+# Security Policy
 
-## ⚠️ IMPORTANT: Before Pushing to GitHub
+## Reporting Security Vulnerabilities
 
-This project contains sensitive security configurations. Follow these steps to ensure your credentials are protected:
+If you discover a security vulnerability in this project, please report it responsibly:
 
-### ✅ Security Checklist
+1. **Do not** create a public GitHub issue for security vulnerabilities
+2. Email the project maintainers directly
+3. Include a detailed description of the vulnerability
+4. Provide steps to reproduce the issue if possible
 
-- [x] **Environment Files Protected**: All `.env` files are in `.gitignore`
-- [x] **Secure Passwords Generated**: Database and demo user passwords are cryptographically secure
-- [x] **JWT Secret Secured**: 256-bit JWT secret generated and protected
-- [x] **Docker Environment Variables**: Docker Compose uses environment variables instead of hardcoded passwords
-- [x] **Example Files Created**: `.env.example` file provided for reference without secrets
+## Security Measures
 
-### 🛡️ Current Security Features
+This project implements several security measures:
 
-#### Password Security
-- **Database Password**: `YOUR_SECURE_DB_PASSWORD` (16+ characters, mixed case, numbers, symbols)
-- **JWT Secret**: 256-bit cryptographically secure hex key
-- **Demo Passwords**: Generated with crypto.randomBytes() for maximum entropy
+- JWT-based authentication with secure token generation
+- Password hashing using bcrypt
+- Rate limiting to prevent brute force attacks
+- Input validation and sanitization
+- Environment variable protection for sensitive data
+- SSH key-based authentication for deployment
 
-#### Application Security
-- ✅ Rate limiting (5 login attempts per 15 minutes)
-- ✅ Account lockout protection
-- ✅ Session management with blacklisting
-- ✅ Input sanitization and XSS protection
-- ✅ CSRF protection
-- ✅ Security headers (Helmet.js)
-- ✅ Password strength validation (OWASP compliant)
-- ✅ Secure session timeouts
+## Secure Configuration
 
-### 🔧 Setup Instructions
+- All sensitive data is stored in environment variables
+- Database credentials are properly secured
+- JWT secrets use strong random generation
+- Production environment isolation
 
-1. **Copy Environment Files**:
-   ```bash
-   cp .env.example .env
-   cp backend/.env.example backend/.env
-   ```
+## Dependencies
 
-2. **Generate Secure JWT Secret**:
-   ```bash
-   # Linux/Mac:
-   openssl rand -hex 64
-   
-   # Windows PowerShell:
-   [System.Web.Security.Membership]::GeneratePassword(128, 0)
-   ```
+We regularly update dependencies to address security vulnerabilities. If you notice any outdated dependencies with known security issues, please report them.
 
-3. **Update Database Password**:
-   - Edit `.env` and `backend/.env`
-   - Use a strong password with mixed case, numbers, and symbols
-   - Minimum 16 characters recommended
+## Supported Versions
 
-4. **Run Secure Setup**:
-   ```bash
-   cd backend
-   npm run setup-secure
-   ```
-
-### 🚨 Never Commit These Files
-- `.env` (root directory)
-- `backend/.env`
-- `docker-compose.override.yml`
-- Any files containing passwords, API keys, or secrets
-
-### 🔍 Security Verification
-
-Before pushing to GitHub, verify:
-```bash
-git status
-# Ensure no .env files are listed for commit
-
-git ls-files | grep -E "\\.env$"
-# Should return empty (no .env files tracked)
-```
-
-### 🆘 Emergency: If Secrets Were Committed
-
-1. **Immediately rotate all secrets**:
-   - Generate new JWT secret
-   - Change database passwords
-   - Update all environment files
-
-2. **Remove from Git history**:
-   ```bash
-   git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch .env backend/.env' --prune-empty --tag-name-filter cat -- --all
-   ```
-
-3. **Force push** (⚠️ Warning: This rewrites history):
-   ```bash
-   git push --force --all
-   ```
-
-### 📞 Security Contact
-
-For security concerns or questions, please:
-- Create a security issue in the repository
-- Follow responsible disclosure practices
-- Do not include sensitive information in public issues
-
----
-**Last Updated**: May 27, 2025  
-**Security Level**: Enterprise Grade  
-**Compliance**: OWASP Guidelines
+Only the latest version of this project is actively supported with security updates.

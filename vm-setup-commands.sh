@@ -2,7 +2,7 @@
 # Complete VM Setup Commands for GitHub Actions CI/CD
 # Run these commands on your VM: ubuntu@YOUR_VM_IP_HERE
 
-echo "🚀 Setting up VM for automated deployment..."
+echo "Setting up VM for automated deployment..."
 
 # Create and configure the .env file properly
 cat > /opt/helpdesk/.env << 'EOF'
@@ -29,23 +29,23 @@ PORT=3000
 NODE_ENV=production
 EOF
 
-echo "✅ Environment file created successfully!"
+echo "Environment file created successfully!"
 
 # Verify the .env file was created
-echo "📄 Checking .env file contents:"
+echo "Checking .env file contents:"
 cat /opt/helpdesk/.env
 
 # Install PM2 globally
-echo "📦 Installing PM2..."
+echo "Installing PM2..."
 sudo npm install -g pm2
 
 # Install nginx
-echo "📦 Installing nginx..."
+echo "Installing nginx..."
 sudo apt update
 sudo apt install -y nginx
 
 # Configure nginx
-echo "⚙️ Configuring nginx..."
+echo "Configuring nginx..."
 sudo tee /etc/nginx/sites-available/helpdesk << 'EOF'
 server {
     listen 80;
@@ -74,38 +74,38 @@ server {
 EOF
 
 # Enable the site
-echo "🔗 Enabling nginx site..."
+echo "Enabling nginx site..."
 sudo ln -sf /etc/nginx/sites-available/helpdesk /etc/nginx/sites-enabled/
 sudo rm -f /etc/nginx/sites-enabled/default
 
 # Test nginx configuration
-echo "🧪 Testing nginx configuration..."
+echo "Testing nginx configuration..."
 sudo nginx -t
 
 if [ $? -eq 0 ]; then
-    echo "✅ Nginx configuration is valid!"
+    echo "Nginx configuration is valid!"
     sudo systemctl reload nginx
-    echo "✅ Nginx reloaded successfully!"
+    echo "Nginx reloaded successfully!"
 else
-    echo "❌ Nginx configuration error!"
+    echo "Nginx configuration error!"
     exit 1
 fi
 
 # Set up PM2 startup
-echo "🔄 Setting up PM2 startup..."
+echo "Setting up PM2 startup..."
 pm2 startup
 
 echo ""
-echo "🎉 VM Setup Complete!"
+echo "VM Setup Complete!"
 echo ""
-echo "⚠️  IMPORTANT: Run the PM2 startup command that was just displayed above!"
+echo "IMPORTANT: Run the PM2 startup command that was just displayed above!"
 echo "    It should look like: sudo env PATH=... pm2 startup systemd -u ubuntu --hp /home/ubuntu"
 echo ""
-echo "🔍 Verification:"
-echo "  ✅ Environment file: /opt/helpdesk/.env"
-echo "  ✅ PM2 installed globally"
-echo "  ✅ Nginx installed and configured"
-echo "  ✅ Site enabled and nginx reloaded"
+echo "Verification:"
+echo "  Environment file: /opt/helpdesk/.env"
+echo "  PM2 installed globally"
+echo "  Nginx installed and configured"
+echo "  Site enabled and nginx reloaded"
 echo ""
-echo "🚀 Ready for automated deployment!"
+echo "Ready for automated deployment!"
 echo "   Next: Configure GitHub secrets and push to trigger deployment"
