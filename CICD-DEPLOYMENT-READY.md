@@ -27,7 +27,7 @@ The GitHub Actions CI/CD pipeline has been successfully configured and is ready 
 | Secret Name | Value | Description |
 |-------------|-------|-------------|
 | `SSH_PRIVATE_KEY` | Content of `terraform/helpdesk-key` | SSH private key for VM access |
-| `VM_IP` | `34.27.194.236` | GCP VM public IP address |
+| `VM_IP` | `YOUR_VM_IP_HERE` | GCP VM public IP address |
 | `SLACK_WEBHOOK` | `https://hooks.slack.com/...` | Optional Slack notifications |
 
 ## 🎯 Next Steps to Enable Auto-Deployment
@@ -47,7 +47,7 @@ git push origin main
 ### Step 3: Prepare VM for Auto-Deployment
 SSH into your VM and run the setup commands from `GITHUB-ACTIONS-SETUP.md`:
 ```bash
-ssh -i terraform/helpdesk-key ubuntu@34.27.194.236
+ssh -i terraform/helpdesk-key ubuntu@YOUR_VM_IP_HERE
 # Follow the "Pre-Deployment Setup on VM" section
 ```
 
@@ -97,8 +97,8 @@ Every push to the `main` branch automatically triggers:
 - Monitor test results and coverage
 
 ### Application Health
-- **Backend Health**: `http://34.27.194.236:3000/api/health`
-- **Frontend**: `http://34.27.194.236/`
+- **Backend Health**: `http://YOUR_VM_IP_HERE:3000/api/health`
+- **Frontend**: `http://YOUR_VM_IP_HERE/`
 
 ### Deployment History
 - All deployments tracked in GitHub Actions
@@ -121,7 +121,7 @@ If deployment fails, the pipeline will automatically:
 
 ### SSH Emergency Access
 ```bash
-ssh -i terraform/helpdesk-key ubuntu@34.27.194.236
+ssh -i terraform/helpdesk-key ubuntu@YOUR_VM_IP_HERE
 cd /opt/helpdesk
 pm2 status  # Check application status
 pm2 logs helpdesk-backend  # View logs
