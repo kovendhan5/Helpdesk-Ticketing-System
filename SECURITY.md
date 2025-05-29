@@ -15,7 +15,7 @@ This project contains sensitive security configurations. Follow these steps to e
 ### 🛡️ Current Security Features
 
 #### Password Security
-- **Database Password**: `SecureP@ssw0rd!2025#HelpDesk` (16+ characters, mixed case, numbers, symbols)
+- **Database Password**: `YOUR_SECURE_DB_PASSWORD` (16+ characters, mixed case, numbers, symbols)
 - **JWT Secret**: 256-bit cryptographically secure hex key
 - **Demo Passwords**: Generated with crypto.randomBytes() for maximum entropy
 

@@ -17,7 +17,7 @@
 - **Service Account**: helpdesk-terraform@avian-lane-461116-f1.iam.gserviceaccount.com
 - **Credentials**: credentials.json (DO NOT commit to git)
 - **SSH Key**: helpdesk-key / helpdesk-key.pub
-- **Database Password**: SecureP@ssw0rd!2025#HelpDesk
+- **Database Password**: YOUR_SECURE_DB_PASSWORD
 - **JWT Secret**: 256-bit secure key
 
 ### Files Created

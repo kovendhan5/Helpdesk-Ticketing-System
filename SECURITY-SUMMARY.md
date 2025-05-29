@@ -3,7 +3,7 @@
 ## ✅ SECURITY MEASURES COMPLETED
 
 ### 1. Database Security
-- **Secure Password**: Changed from `postgres123` to `SecureP@ssw0rd!2025#HelpDesk`
+- **Secure Password**: Changed from `postgres123` to `YOUR_SECURE_DB_PASSWORD`
 - **Environment Variables**: Docker Compose uses `${DB_PASSWORD}` instead of hardcoded values
 - **Git Protection**: Database passwords never committed to version control
 

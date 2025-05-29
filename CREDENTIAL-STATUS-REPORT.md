@@ -27,7 +27,7 @@
 ### 🔐 STRONG CREDENTIALS IMPLEMENTED
 
 #### Database Security
-- **Password**: `SecureP@ssw0rd!2025#HelpDesk` 
+- **Password**: `YOUR_SECURE_DB_PASSWORD` 
   - ✅ 28 characters long
   - ✅ Mixed case letters (A-z)
   - ✅ Numbers (0-9)

@@ -54,7 +54,7 @@ helpdesk-key*
 ```
 
 #### 4. Strong Passwords
-- Database: `SecureP@ssw0rd!2025#HelpDesk` (20+ characters)
+- Database: `YOUR_SECURE_DB_PASSWORD` (20+ characters)
 - JWT Secret: 256-bit cryptographically secure
 - Demo Accounts: Generated with crypto.randomBytes()
 
