@@ -54,7 +54,6 @@ jobs:
         run: |
           cd frontend
           npm audit --audit-level=moderate || echo "⚠️ Frontend security audit found issues"
-
   test:
     name: Run Tests
     runs-on: ubuntu-latest
@@ -87,7 +86,9 @@ jobs:
       - name: Install backend dependencies
         run: |
           cd backend
-          npm install      - name: Wait for PostgreSQL
+          npm install
+
+      - name: Wait for PostgreSQL
         run: |
           echo "Waiting for PostgreSQL to be ready..."
           sleep 15
