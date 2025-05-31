@@ -50,6 +50,15 @@ syntax error near unexpected token `else'
     fi
 ```
 
+### ✅ ESLint Errors in CI Environment
+**Problem**: Frontend build failing in CI due to ESLint warnings being treated as errors
+- Unused variable and unnecessary escape character warnings
+- React Hook dependency array issues
+
+**Solution**: Fixed ESLint errors in frontend code:
+- **Register.js**: Removed unused `useEffect` import, fixed regex escape characters
+- **TicketList.js**: Added `useCallback` import, wrapped `fetchTickets` function, updated dependency arrays
+
 ## Validation Results
 
 ### YAML Syntax: ✅ VALID
@@ -77,6 +86,8 @@ yamllint .github/workflows/ci-cd.yml
 - `.github/workflows/ci-cd.yml` - Fixed YAML syntax and bash script
 - `frontend/package.json` - Updated Jest configuration
 - `frontend/src/App.test.js` - Simplified tests for CI compatibility
+- `frontend/src/components/Register.js` - Removed unused `useEffect` import, fixed regex escape characters
+- `frontend/src/components/TicketList.js` - Added `useCallback` import, wrapped `fetchTickets` function, updated dependency arrays
 
 ---
 *Last Updated: May 31, 2025*
