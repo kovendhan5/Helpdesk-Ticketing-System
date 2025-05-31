@@ -13,9 +13,8 @@ const TicketList = ({ user }) => {
     page: 1,
     limit: 10
   });
-
   // Fetch tickets from API
-  const fetchTickets = async () => {
+  const fetchTickets = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -36,7 +35,7 @@ const TicketList = ({ user }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user.role, filters.userEmail, filters.status, filters.page, filters.limit]);
 
   // Update ticket status (admin only)
   const updateTicketStatus = async (ticketId, newStatus) => {
@@ -89,15 +88,14 @@ const TicketList = ({ user }) => {
       limit: 10
     });
   };
-
   useEffect(() => {
     fetchTickets();
-  }, [filters.page]); // Re-fetch when page changes
+  }, [fetchTickets, filters.page]); // Re-fetch when page changes
 
   useEffect(() => {
     resetFilters(); // Reset filters when component mounts
     fetchTickets();
-  }, []); // Fetch tickets on component mount
+  }, [fetchTickets]); // Fetch tickets on component mount
 
   // Helper functions for styling
   const getPriorityColor = (priority) => {
