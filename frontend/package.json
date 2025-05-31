@@ -24,14 +24,15 @@
       "react-app",
       "react-app/jest"
     ]
-  },
-  "jest": {
+  },  "jest": {
     "transformIgnorePatterns": [
       "node_modules/(?!(axios)/)"
     ],
     "moduleNameMapper": {
       "^axios$": "axios/dist/node/axios.cjs"
-    }
+    },
+    "setupFilesAfterEnv": ["<rootDir>/src/setupTests.js"],
+    "testEnvironment": "jsdom"
   },
   "browserslist": {
     "production": [

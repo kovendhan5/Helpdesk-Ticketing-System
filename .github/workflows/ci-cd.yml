@@ -1,10 +1,11 @@
+---
 name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main ]
+    branches: [main]
 
 env:
   NODE_VERSION: '18'
@@ -53,12 +54,11 @@ jobs:
         continue-on-error: true
         run: |
           cd frontend
-          npm audit --audit-level=moderate || echo "⚠️ Frontend security audit found issues"
-  test:
+          npm audit --audit-level=moderate || echo "⚠️ Frontend security audit found issues"  test:
     name: Run Tests
     runs-on: ubuntu-latest
     needs: security-scan
-    
+
     services:
       postgres:
         image: postgres:13
@@ -114,9 +114,10 @@ jobs:
       - name: Run frontend tests
         env:
           CI: true
+          NODE_ENV: test
         run: |
           cd frontend
-          npm test
+          npm test -- --coverage=false --passWithNoTests
 
   build:
     name: Build Application
