@@ -21,7 +21,8 @@ jobs:
       - name: Run security audit
         run: |
           echo "🔍 Checking for sensitive files..."
-          # Check for sensitive files (exit with warning, not error for now)          if find . -name "*.key" -o -name "*.pem" -o -name "credentials.json" | grep -v node_modules; then
+          # Check for sensitive files (exit with warning, not error for now)
+          if find . -name "*.key" -o -name "*.pem" -o -name "credentials.json" | grep -v node_modules; then
             echo "⚠️ WARNING: Sensitive files detected in repository"
             echo "Please ensure these files are in .gitignore"
           else
