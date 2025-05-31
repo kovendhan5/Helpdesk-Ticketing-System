@@ -30,9 +30,7 @@
     ],
     "moduleNameMapper": {
       "^axios$": "axios/dist/node/axios.cjs"
-    },
-    "setupFilesAfterEnv": ["<rootDir>/src/setupTests.js"],
-    "testEnvironment": "jsdom"
+    }
   },
   "browserslist": {
     "production": [
