@@ -133,3 +133,36 @@ service-account-*.json
 gcp-*.json
 aws-credentials*
 azure-*.json
+
+# Auto-generated documentation files (prevent recreation)
+CICD-*.md
+COMMIT-*.md
+CREDENTIAL-*.md
+DEPLOYMENT-*.md
+FINAL-*.md
+GITHUB-SECURITY-*.md
+INFRASTRUCTURE-*.md
+QUICK-*.md
+SECURITY-SUMMARY.md
+SETUP-*.md
+*-READY.md
+*-COMPLETE.md
+*-FINAL.md
+*-REPORT.md
+*-STEPS.md
+
+# Auto-generated scripts and batch files
+remove-emojis.*
+setup-secure.*
+terraform.bat
+deploy-minimal.*
+
+# Terraform directory auto-generated files
+terraform/COST-*.md
+terraform/DEPLOY*.md
+terraform/MINIMAL-*.md
+terraform/SETUP-*.md
+terraform/*.bat
+
+# Status and summary files
+REPOSITORY-STATUS.md
