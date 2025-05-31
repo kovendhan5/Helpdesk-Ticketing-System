@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -49,10 +49,8 @@ const Register = () => {
       feedback.push('Include at least one number');
     } else {
       score += 1;
-    }
-
-    // Special character check
-    if (!/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+    }    // Special character check
+    if (!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)) {
       feedback.push('Include at least one special character');
     } else {
       score += 1;
