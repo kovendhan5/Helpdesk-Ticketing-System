@@ -185,12 +185,23 @@ jobs:
         run: |
           echo "🚀 Deploying to production server..."
           if [ -n "$VM_IP" ] && [ -n "$SSH_PRIVATE_KEY" ]; then
-            ssh -o StrictHostKeyChecking=no root@$VM_IP '
-              cd /opt/helpdesk-ticketing-system &&
-              git pull origin main &&
-              docker-compose down &&
-              docker-compose up -d --build
-            '
+            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ubuntu@$VM_IP '
+              set -e
+              echo "📍 Current user: $(whoami)"
+              echo "📁 Navigating to application directory..."
+              cd /opt/helpdesk-ticketing-system || { echo "❌ Failed to change directory"; exit 1; }
+              
+              echo "📥 Pulling latest changes..."
+              git pull origin main || { echo "❌ Git pull failed"; exit 1; }
+              
+              echo "🔄 Stopping existing containers..."
+              sudo docker-compose down || echo "⚠️ No containers to stop"
+              
+              echo "🏗️ Building and starting containers..."
+              sudo docker-compose up -d --build || { echo "❌ Docker deployment failed"; exit 1; }
+              
+              echo "✅ Deployment completed successfully"
+            ' || { echo "❌ SSH deployment failed"; exit 1; }
           else
             echo "⚠️ Deployment skipped: VM_IP or SSH_PRIVATE_KEY not configured"
           fi
