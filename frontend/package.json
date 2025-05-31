@@ -19,12 +19,19 @@
     "test": "react-scripts test --watchAll=false --testPathIgnorePatterns=[]",
     "lint": "echo \"✅ Frontend linting complete\" && exit 0",
     "eject": "react-scripts eject"
-  },
-  "eslintConfig": {
+  },  "eslintConfig": {
     "extends": [
       "react-app",
       "react-app/jest"
     ]
+  },
+  "jest": {
+    "transformIgnorePatterns": [
+      "node_modules/(?!(axios)/)"
+    ],
+    "moduleNameMapper": {
+      "^axios$": "axios/dist/node/axios.cjs"
+    }
   },
   "browserslist": {
     "production": [
