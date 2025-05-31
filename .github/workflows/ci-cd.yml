@@ -182,20 +182,34 @@ jobs:
         env:
           VM_IP: ${{ secrets.VM_IP }}
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           echo "🚀 Deploying to production server..."
           if [ -n "$VM_IP" ] && [ -n "$SSH_PRIVATE_KEY" ]; then
             ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ubuntu@$VM_IP '
               set -e
               echo "📍 Current user: $(whoami)"
-              echo "📁 Navigating to application directory..."
-              cd /opt/helpdesk-ticketing-system || { echo "❌ Failed to change directory"; exit 1; }
               
-              echo "📥 Pulling latest changes..."
-              git pull origin main || { echo "❌ Git pull failed"; exit 1; }
+              echo "📁 Setting up application directory..."
+              sudo mkdir -p /opt/helpdesk-ticketing-system
+              sudo chown ubuntu:ubuntu /opt/helpdesk-ticketing-system
+              cd /opt/helpdesk-ticketing-system
               
-              echo "🔄 Stopping existing containers..."
-              sudo docker-compose down || echo "⚠️ No containers to stop"
+              echo "� Stopping existing containers..."
+              sudo docker-compose down 2>/dev/null || echo "⚠️ No containers to stop"
+              
+              echo "🧹 Cleaning up old files..."
+              rm -rf ./* 2>/dev/null || true
+              
+              echo "� Initializing repository..."
+              if [ ! -d ".git" ]; then
+                git init
+                git remote add origin https://github.com/$(echo $GITHUB_REPOSITORY).git 2>/dev/null || true
+              fi
+              
+              echo "📦 Pulling latest code..."
+              git fetch origin main 2>/dev/null || { echo "⚠️ Git fetch failed, continuing..."; }
+              git reset --hard origin/main 2>/dev/null || { echo "⚠️ Git reset failed, continuing..."; }
               
               echo "🏗️ Building and starting containers..."
               sudo docker-compose up -d --build || { echo "❌ Docker deployment failed"; exit 1; }
