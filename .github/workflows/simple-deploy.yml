@@ -1,0 +1,97 @@
+---
+name: Deploy to Production
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.8.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Deploy to server
+        env:
+          VM_IP: ${{ secrets.VM_IP }}
+        run: |
+          echo "🚀 Deploying to production server..."
+          
+          # Create deployment package
+          tar czf deploy.tar.gz docker-compose.yml backend/ frontend/
+          
+          # Deploy in a single SSH session
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ubuntu@$VM_IP '
+            set -e
+            
+            echo "🏗️ Setting up deployment environment..."
+            sudo mkdir -p /opt/helpdesk-ticketing-system
+            sudo chown ubuntu:ubuntu /opt/helpdesk-ticketing-system
+            cd /opt/helpdesk-ticketing-system
+            
+            # Stop existing containers
+            if [ -f "docker-compose.yml" ]; then
+              echo "🛑 Stopping existing containers..."
+              sudo docker-compose down 2>/dev/null || echo "No containers to stop"
+            fi
+            
+            # Clean directory
+            echo "🧹 Cleaning deployment directory..."
+            rm -rf ./* 2>/dev/null || true
+            
+            # Install Docker if needed
+            if ! command -v docker &> /dev/null; then
+              echo "📥 Installing Docker..."
+              sudo apt-get update -qq
+              sudo apt-get install -y docker.io docker-compose
+              sudo systemctl enable docker
+              sudo systemctl start docker
+              echo "✅ Docker installed"
+            else
+              echo "✅ Docker already available"
+            fi
+          '
+          
+          echo "📤 Copying files to server..."
+          scp -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+            deploy.tar.gz ubuntu@$VM_IP:/opt/helpdesk-ticketing-system/
+          
+          echo "🏗️ Extracting and starting services..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ubuntu@$VM_IP '
+            set -e
+            cd /opt/helpdesk-ticketing-system
+            
+            # Extract files
+            tar xzf deploy.tar.gz
+            rm deploy.tar.gz
+            
+            # Verify docker-compose.yml exists
+            if [ ! -f "docker-compose.yml" ]; then
+              echo "❌ docker-compose.yml not found!"
+              exit 1
+            fi
+            
+            echo "📋 Files in deployment directory:"
+            ls -la
+            
+            # Start services
+            sudo docker-compose up -d --build
+            
+            echo "✅ Deployment completed"
+            sudo docker-compose ps          '
+
+      - name: Health check
+        env:
+          VM_IP: ${{ secrets.VM_IP }}
+        run: |
+          echo "🏥 Running health check..."
+          sleep 30
+          curl -f http://$VM_IP:3000/ || echo "⚠️ Health check failed"
