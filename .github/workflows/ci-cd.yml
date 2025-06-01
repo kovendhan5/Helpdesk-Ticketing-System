@@ -168,74 +168,88 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: build-files
+          path: frontend/build/
 
       - name: Setup SSH
-        if: env.SSH_PRIVATE_KEY != ''
         uses: webfactory/ssh-agent@v0.8.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
 
-      - name: Deploy to server
-        if: env.VM_IP != '' && env.SSH_PRIVATE_KEY != ''
+      - name: Prepare deployment directory on server
         env:
           VM_IP: ${{ secrets.VM_IP }}
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          GITHUB_REPOSITORY: ${{ github.repository }}
+        run: |
+          echo "🏗️ Preparing deployment directory..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ubuntu@$VM_IP '
+            sudo mkdir -p /opt/helpdesk-ticketing-system
+            sudo chown ubuntu:ubuntu /opt/helpdesk-ticketing-system
+            
+            # Stop existing containers
+            cd /opt/helpdesk-ticketing-system
+            sudo docker-compose down 2>/dev/null || echo "No containers to stop"
+              # Clean directory
+            rm -rf ./* 2>/dev/null || true
+          '
+
+      - name: Copy application files to server
+        env:
+          VM_IP: ${{ secrets.VM_IP }}
+        run: |
+          echo "📤 Copying application files to server..."
+          # Copy docker-compose.yml first
+          scp -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
+            docker-compose.yml ubuntu@$VM_IP:/opt/helpdesk-ticketing-system/
+          
+          # Copy backend directory
+          scp -o StrictHostKeyChecking=no -o ConnectTimeout=30 -r \
+            backend/ ubuntu@$VM_IP:/opt/helpdesk-ticketing-system/
+            # Copy frontend directory  
+          scp -o StrictHostKeyChecking=no -o ConnectTimeout=30 -r \
+            frontend/ ubuntu@$VM_IP:/opt/helpdesk-ticketing-system/
+
+      - name: Install Docker and deploy
+        env:
+          VM_IP: ${{ secrets.VM_IP }}
         run: |
           echo "🚀 Deploying to production server..."
-          if [ -n "$VM_IP" ] && [ -n "$SSH_PRIVATE_KEY" ]; then
-            ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ubuntu@$VM_IP '
-              set -e
-              echo "📍 Current user: $(whoami)"
-              
-              echo "📁 Setting up application directory..."
-              sudo mkdir -p /opt/helpdesk-ticketing-system
-              sudo chown ubuntu:ubuntu /opt/helpdesk-ticketing-system
-              cd /opt/helpdesk-ticketing-system
-              
-              echo "� Stopping existing containers..."
-              sudo docker-compose down 2>/dev/null || echo "⚠️ No containers to stop"
-              
-              echo "🧹 Cleaning up old files..."
-              rm -rf ./* 2>/dev/null || true
-              
-              echo "� Initializing repository..."
-              if [ ! -d ".git" ]; then
-                git init
-                git remote add origin https://github.com/$(echo $GITHUB_REPOSITORY).git 2>/dev/null || true
-              fi
-              
-              echo "📦 Pulling latest code..."
-              git fetch origin main 2>/dev/null || { echo "⚠️ Git fetch failed, continuing..."; }
-              git reset --hard origin/main 2>/dev/null || { echo "⚠️ Git reset failed, continuing..."; }
-                echo "🏗️ Building and starting containers..."
-              # Install Docker if not present
-              if ! command -v docker &> /dev/null; then
-                echo "📥 Installing Docker..."
-                sudo apt-get update -qq
-                sudo apt-get install -y docker.io docker-compose
-                sudo systemctl enable docker
-                sudo systemctl start docker
-                sudo usermod -aG docker ubuntu
-                echo "✅ Docker installed"
-              fi
-              
-              # Check for docker-compose
-              if ! command -v docker-compose &> /dev/null; then
-                echo "📥 Installing Docker Compose..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ubuntu@$VM_IP '
+            set -e
+            cd /opt/helpdesk-ticketing-system
+            
+            echo "📋 Verifying files are present..."
+            ls -la
+            if [ ! -f "docker-compose.yml" ]; then
+              echo "❌ docker-compose.yml not found!"
+              exit 1
+            fi
+            
+            # Install Docker if not present
+            if ! command -v docker &> /dev/null; then
+              echo "📥 Installing Docker..."
+              sudo apt-get update -qq
+              sudo apt-get install -y docker.io
+              sudo systemctl enable docker
+              sudo systemctl start docker
+              sudo usermod -aG docker ubuntu
+              echo "✅ Docker installed"
+            fi
+            
+            # Install Docker Compose if not present
+            if ! command -v docker-compose &> /dev/null; then
+              echo "📥 Installing Docker Compose..."
+              sudo apt-get install -y docker-compose || {
+                # Fallback to manual installation
                 sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
                 sudo chmod +x /usr/local/bin/docker-compose
-              fi
-              
-              sudo docker-compose up -d --build || { echo "❌ Docker deployment failed"; exit 1; }
-              
-              echo "✅ Deployment completed successfully"
-            ' || { echo "❌ SSH deployment failed"; exit 1; }
-          else
-            echo "⚠️ Deployment skipped: VM_IP or SSH_PRIVATE_KEY not configured"
-          fi
+              }
+              echo "✅ Docker Compose installed"
+            fi
+            
+            echo "🏗️ Building and starting containers..."
+            sudo docker-compose up -d --build
+            
+            echo "✅ Deployment completed successfully"
+          '
 
       - name: Health check
         if: env.VM_IP != ''
