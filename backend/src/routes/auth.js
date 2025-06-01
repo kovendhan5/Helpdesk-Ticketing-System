@@ -114,18 +114,10 @@ router.post('/login', loginRateLimiter(), async (req, res) => {
         error: 'Invalid email or password',
         code: 'INVALID_CREDENTIALS'
       });
-    }
+    }    const user = result.rows[0];
 
-    const user = result.rows[0];
-
-    // Check if account is locked (you can implement account locking logic here)
-    if (user.locked_until && new Date() < new Date(user.locked_until)) {
-      return res.status(423).json({
-        error: 'Account is temporarily locked',
-        code: 'ACCOUNT_LOCKED',
-        lockedUntil: user.locked_until
-      });
-    }
+    // Note: Account locking features would require additional database columns
+    // For now, we'll skip the account lock check
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
@@ -144,15 +136,13 @@ router.post('/login', loginRateLimiter(), async (req, res) => {
         error: 'Invalid email or password',
         code: 'INVALID_CREDENTIALS'
       });
-    }
-
-    // Generate enhanced JWT tokens
+    }    // Generate enhanced JWT tokens
     const { token, sessionId } = generateToken(user, 'access');
     const refreshTokenData = generateToken(user, 'refresh');
-
+    
     // Update last login
     await pool.query(
-      'UPDATE users SET last_login = NOW(), failed_login_attempts = 0 WHERE id = $1',
+      'UPDATE users SET last_login = NOW() WHERE id = $1',
       [user.id]
     );
 

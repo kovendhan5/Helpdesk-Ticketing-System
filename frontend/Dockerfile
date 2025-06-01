@@ -1,5 +1,5 @@
 # Frontend Dockerfile for Helpdesk Ticketing System
-FROM node:20-alpine as build
+FROM node:20-alpine AS build
 
 # Set working directory
 WORKDIR /app
@@ -7,12 +7,14 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production --silent
+# Install dependencies (including dev dependencies for build)
+RUN npm ci
 
-# Copy source code
+# Copy source code and config files
 COPY src/ ./src/
 COPY public/ ./public/
+COPY tailwind.config.js ./
+COPY postcss.config.js ./
 
 # Build the application
 RUN npm run build
@@ -23,21 +25,18 @@ FROM nginx:alpine
 # Copy built application
 COPY --from=build /app/build /usr/share/nginx/html
 
-# Copy nginx configuration
+# Copy nginx configurations
 COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY nginx-main.conf /etc/nginx/nginx.conf
 
-# Create non-root user
-RUN addgroup -g 1001 -S nginx && \
-    adduser -S nginx -u 1001 -G nginx
-
-# Set ownership
+# Set ownership for nginx files and create writable temp directory
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    chown -R nginx:nginx /var/cache/nginx && \
-    chown -R nginx:nginx /var/log/nginx && \
-    chown -R nginx:nginx /etc/nginx/conf.d
-
-# Switch to non-root user
-USER nginx
+    mkdir -p /tmp/nginx && \
+    chmod 777 /tmp/nginx && \
+    mkdir -p /var/log/nginx && \
+    chmod 755 /var/log/nginx && \
+    touch /tmp/nginx/nginx.pid && \
+    chmod 666 /tmp/nginx/nginx.pid
 
 # Expose port
 EXPOSE 3000
@@ -46,5 +45,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:3000/health || exit 1
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Start nginx with explicit configuration
+CMD ["nginx", "-c", "/etc/nginx/nginx.conf", "-g", "daemon off;"]

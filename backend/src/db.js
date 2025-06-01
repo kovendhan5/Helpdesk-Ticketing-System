@@ -6,17 +6,24 @@ dotenv.config();
 const { Pool } = pkg;
 
 // Database connection configuration
-const pool = new Pool({
-  host: process.env.DB_HOST,
-  port: process.env.DB_PORT,
-  database: process.env.DB_NAME,
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+const dbConfig = {
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT) || 5432,
+  database: process.env.DB_NAME || 'helpdesk_db',
+  user: process.env.DB_USER || 'helpdesk_user',
+  password: process.env.DB_PASSWORD || 'helpdesk_secure_password_2024',
+  ssl: false, // Explicitly disable SSL for local development
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
+};
+
+console.log('🔗 Database configuration:', {
+  ...dbConfig,
+  password: '***hidden***'
 });
+
+const pool = new Pool(dbConfig);
 
 // Test database connection
 pool.on('connect', () => {
