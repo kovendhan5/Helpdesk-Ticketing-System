@@ -4,8 +4,9 @@ FROM node:20-alpine
 # Set working directory
 WORKDIR /app
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
+# Install wget for health checks and create non-root user for security
+RUN apk add --no-cache wget && \
+    addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
 # Copy package files
