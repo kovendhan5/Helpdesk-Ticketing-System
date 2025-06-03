@@ -10,8 +10,8 @@ const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT) || 5432,
   database: process.env.DB_NAME || 'helpdesk_db',
-  user: process.env.DB_USER || 'helpdesk_user',
-  password: process.env.DB_PASSWORD || 'helpdesk_secure_password_2024',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'helpdesk_local_password_2024',
   ssl: false, // Explicitly disable SSL for local development
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000,
