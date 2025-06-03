@@ -157,8 +157,14 @@ jobs:
             sudo docker exec helpdesk-frontend wget -q --spider http://localhost:3000/health && echo "✅ Frontend internal health OK" || echo "❌ Frontend internal health failed"
             sudo docker exec helpdesk-postgres pg_isready -U postgres && echo "✅ PostgreSQL ready" || echo "❌ PostgreSQL not ready"
           '
-          
-          echo ""
+            echo ""
           echo "=== EXTERNAL HEALTH CHECKS ==="
+          echo "🌐 Testing website accessibility at: http://$VM_IP:3000"
+          echo "🔗 Testing API accessibility at: http://$VM_IP:3001"
           curl -f -m 10 http://$VM_IP:3000/health && echo "✅ Frontend externally accessible" || echo "❌ Frontend not accessible"
           curl -f -m 10 http://$VM_IP:3001/health && echo "✅ Backend externally accessible" || echo "❌ Backend not accessible"
+          
+          echo ""
+          echo "🎉 IF SUCCESSFUL, ACCESS YOUR WEBSITE AT:"
+          echo "   Frontend: http://$VM_IP:3000"
+          echo "   Backend API: http://$VM_IP:3001"
