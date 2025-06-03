@@ -25,6 +25,24 @@ jobs:
         run: |
           echo "🚀 Deploying to production server..."
           
+          # Test connectivity first
+          echo "🔍 Testing server connectivity..."
+          echo "Server IP: $VM_IP"
+          
+          # Test basic connectivity
+          timeout 10 bash -c "echo >/dev/tcp/$VM_IP/22" && echo "✅ Port 22 is reachable" || echo "❌ Port 22 unreachable"
+          
+          # Test SSH connection with verbose output
+          echo "🔐 Testing SSH connection..."
+          ssh -v -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o BatchMode=yes ubuntu@$VM_IP 'echo "✅ SSH connection successful"' || {
+            echo "❌ SSH connection failed. Checking common issues..."
+            echo "- Verify VM_IP secret is correct: $VM_IP"
+            echo "- Verify SSH_PRIVATE_KEY secret contains valid private key"
+            echo "- Check if server is running and SSH service is enabled"
+            echo "- Verify firewall allows SSH on port 22"
+            exit 1
+          }
+          
           # Create deployment package
           tar czf deploy.tar.gz docker-compose.yml backend/ frontend/
           
@@ -88,10 +106,9 @@ jobs:
             echo "PORT=3001" >> .env
             echo "DB_HOST=postgres" >> .env
             echo "DB_PORT=5432" >> .env
-            echo "DB_NAME=helpdesk_db" >> .env
-            echo "DB_USER=postgres" >> .env
-            echo "DB_PASSWORD=helpdesk_demo_password_2024" >> .env
-            echo "JWT_SECRET=demo_jwt_secret_key_for_testing_only_change_in_production_a1b2c3d4e5f6789012345678901234567890" >> .env
+            echo "DB_NAME=helpdesk_db" >> .env            echo "DB_USER=postgres" >> .env
+            echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> .env
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
             echo "SESSION_TIMEOUT=3600000" >> .env
             echo "MAX_LOGIN_ATTEMPTS=5" >> .env
             echo "LOCKOUT_TIME=900000" >> .env
