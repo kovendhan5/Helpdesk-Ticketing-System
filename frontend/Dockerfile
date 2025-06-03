@@ -4,11 +4,18 @@ FROM node:20-alpine AS build
 # Set working directory
 WORKDIR /app
 
-# Copy package files
+# Set environment variables for faster builds
+ENV NODE_ENV=production
+ENV GENERATE_SOURCEMAP=false
+ENV CI=true
+
+# Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies (including dev dependencies for build)
-RUN npm install --no-audit --no-fund
+# Install dependencies using npm ci for faster, reliable builds
+RUN npm ci --only=production --no-audit --no-fund && \
+    npm install --no-save react-scripts && \
+    npm cache clean --force
 
 # Copy source code and config files
 COPY src/ ./src/
@@ -16,7 +23,7 @@ COPY public/ ./public/
 COPY tailwind.config.js ./
 COPY postcss.config.js ./
 
-# Build the application
+# Build the application with optimizations
 RUN npm run build
 
 # Production stage with nginx
