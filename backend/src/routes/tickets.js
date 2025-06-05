@@ -363,9 +363,7 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
     }
 
     // Only admins can create internal comments
-    const isInternalComment = isAdmin && is_internal;
-
-    // Insert comment
+    const isInternalComment = isAdmin && is_internal;    // Insert comment
     const result = await pool.query(
       'INSERT INTO ticket_comments (ticket_id, user_email, comment, is_internal) VALUES ($1, $2, $3, $4) RETURNING *',
       [id, userEmail, comment.trim(), isInternalComment]
@@ -373,6 +371,33 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
 
     // Update ticket's updated_at timestamp
     await pool.query('UPDATE tickets SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [id]);
+
+    // Send email notifications for comments (only for non-internal comments)
+    if (!isInternalComment) {
+      try {
+        // Get ticket details for email
+        const ticketResult = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
+        const ticket = ticketResult.rows[0];
+        
+        // Send notification to ticket owner if comment is not from them
+        if (ticket.user_email !== userEmail) {
+          await emailService.sendCommentNotification(ticket, result.rows[0], ticket.user_email);
+        }
+        
+        // Send notification to admins if comment is from user
+        if (!isAdmin) {
+          const adminResult = await pool.query("SELECT email FROM users WHERE role = 'admin'");
+          for (const admin of adminResult.rows) {
+            if (admin.email !== userEmail) {
+              await emailService.sendCommentNotification(ticket, result.rows[0], admin.email);
+            }
+          }
+        }
+      } catch (emailError) {
+        console.error('Failed to send comment notification emails:', emailError);
+        // Continue with response even if email fails
+      }
+    }
 
     res.status(201).json(result.rows[0]);
   } catch (error) {
