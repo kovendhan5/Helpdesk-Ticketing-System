@@ -686,4 +686,44 @@ router.post('/admin/upload', authenticateToken, requireAdmin, upload.single('fil
   }
 });
 
+// Test email service (admin only)
+router.post('/admin/test-email', authenticateToken, requireAdmin, async (req, res) => {
+  try {
+    const { testEmail } = req.body;
+    const email = testEmail || req.user.email;
+
+    // Test email service connection
+    const isReady = await emailService.testConnection();
+    
+    if (!isReady) {
+      return res.status(500).json({ 
+        error: 'Email service configuration failed',
+        message: 'Please check SMTP configuration in environment variables'
+      });
+    }
+
+    // Send test email
+    const testTicket = {
+      id: 'TEST-' + Date.now(),
+      subject: 'Email Service Test',
+      message: 'This is a test email to verify the helpdesk email service is working correctly. Sent at ' + new Date().toLocaleString(),
+      priority: 'medium',
+      category: 'technical',
+      status: 'open',
+      created_at: new Date().toISOString()
+    };
+
+    await emailService.sendTicketCreatedNotification(testTicket, email);
+    
+    res.json({ 
+      message: 'Test email sent successfully',
+      email: email,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Email test error:', error);
+    res.status(500).json({ error: 'Failed to send test email: ' + error.message });
+  }
+});
+
 export default router;
