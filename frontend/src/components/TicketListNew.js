@@ -29,7 +29,7 @@ const TicketList = ({ user }) => {
 
   const fetchCategories = async () => {
     try {
-      const response = await axios.get('/tickets/meta/categories');
+      const response = await axios.get('/categories');
       setCategories(response.data);
     } catch (error) {
       console.error('Failed to fetch categories:', error);
@@ -422,4 +422,4 @@ const TicketList = ({ user }) => {
   );
 };
 
-
+export default TicketList;

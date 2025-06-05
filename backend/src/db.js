@@ -1,5 +1,5 @@
-import pkg from 'pg';
 import dotenv from 'dotenv';
+import pkg from 'pg';
 
 dotenv.config();
 
@@ -47,19 +47,57 @@ export const initializeDatabase = async () => {
         role TEXT CHECK (role IN ('user', 'admin')) DEFAULT 'user',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
-    `);
-
-    // Create tickets table
+    `);    // Create tickets table with enhanced features
     await pool.query(`
       CREATE TABLE IF NOT EXISTS tickets (
         id SERIAL PRIMARY KEY,
         user_email TEXT NOT NULL REFERENCES users(email),
         subject TEXT NOT NULL,
         message TEXT NOT NULL,
-        priority TEXT CHECK (priority IN ('low', 'medium', 'high')),
-        status TEXT CHECK (status IN ('open', 'in_progress', 'resolved')) DEFAULT 'open',
+        priority TEXT CHECK (priority IN ('low', 'medium', 'high')) DEFAULT 'medium',
+        status TEXT CHECK (status IN ('open', 'in_progress', 'resolved', 'closed')) DEFAULT 'open',
+        category TEXT CHECK (category IN ('general', 'technical', 'billing', 'account', 'feature_request', 'bug_report')) DEFAULT 'general',
+        assigned_to TEXT REFERENCES users(email),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        resolved_at TIMESTAMP NULL
+      )
+    `);
+
+    // Create ticket comments table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ticket_comments (
+        id SERIAL PRIMARY KEY,
+        ticket_id INTEGER NOT NULL REFERENCES tickets(id) ON DELETE CASCADE,
+        user_email TEXT NOT NULL REFERENCES users(email),
+        comment TEXT NOT NULL,
+        is_internal BOOLEAN DEFAULT FALSE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )
+    `);
+
+    // Create categories table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS categories (
+        id SERIAL PRIMARY KEY,
+        name TEXT NOT NULL UNIQUE,
+        description TEXT,
+        color TEXT DEFAULT '#6B7280',
+        active BOOLEAN DEFAULT TRUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
+
+    // Insert default categories
+    await pool.query(`
+      INSERT INTO categories (name, description, color) VALUES
+        ('General', 'General inquiries and requests', '#6B7280'),
+        ('Technical', 'Technical support and IT issues', '#DC2626'),
+        ('Billing', 'Billing and payment related issues', '#059669'),
+        ('Account', 'Account management and access issues', '#7C3AED'),
+        ('Feature Request', 'New feature suggestions', '#2563EB'),
+        ('Bug Report', 'Software bugs and issues', '#EA580C')
+      ON CONFLICT (name) DO NOTHING
     `);
 
     console.log('Database tables initialized successfully');

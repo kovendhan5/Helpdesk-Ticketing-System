@@ -1,18 +1,40 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const TicketForm = ({ user }) => {
-  const navigate = useNavigate();
-  const [formData, setFormData] = useState({
+  const navigate = useNavigate();  const [formData, setFormData] = useState({
     subject: '',
     message: '',
-    priority: 'medium'
+    priority: 'medium',
+    category: 'general'
   });
+  const [attachments, setAttachments] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+  const fetchCategories = async () => {
+    try {
+      const response = await axios.get('/tickets/meta/categories');
+      setCategories(response.data);
+    } catch (error) {
+      console.error('Failed to fetch categories:', error);
+      // Set default categories if API fails
+      setCategories([
+        { id: 1, name: 'general', description: 'General inquiries' },
+        { id: 2, name: 'technical', description: 'Technical support' },
+        { id: 3, name: 'billing', description: 'Billing issues' },
+        { id: 4, name: 'account', description: 'Account management' },
+        { id: 5, name: 'feature_request', description: 'Feature requests' },
+        { id: 6, name: 'bug_report', description: 'Bug reports' }
+      ]);
+    }
+  };
   const handleChange = (e) => {
     setFormData({
       ...formData,
@@ -21,6 +43,53 @@ const TicketForm = ({ user }) => {
     setError(''); // Clear error when user types
   };
 
+  const handleFileChange = (e) => {
+    const files = Array.from(e.target.files);
+    const validFiles = files.filter(file => {
+      const maxSize = 10 * 1024 * 1024; // 10MB
+      const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 
+                           'application/pdf', 'application/msword', 
+                           'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+                           'text/plain', 'application/zip', 'application/x-rar-compressed'];
+      
+      if (file.size > maxSize) {
+        setError(`File ${file.name} is too large. Maximum size is 10MB.`);
+        return false;
+      }
+      
+      if (!allowedTypes.includes(file.type)) {
+        setError(`File ${file.name} has an unsupported type. Please upload images, documents, or archives only.`);
+        return false;
+      }
+      
+      return true;
+    });
+    
+    setAttachments(prevAttachments => [...prevAttachments, ...validFiles]);
+    setError(''); // Clear error if files are valid
+  };
+
+  const removeAttachment = (index) => {
+    setAttachments(prevAttachments => prevAttachments.filter((_, i) => i !== index));
+  };
+
+  const uploadAttachments = async (ticketId) => {
+    for (const file of attachments) {
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        await axios.post(`/tickets/${ticketId}/attachments`, formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          }
+        });
+      } catch (error) {
+        console.error('Failed to upload attachment:', file.name, error);
+        // Continue with other uploads even if one fails
+      }
+    }
+  };
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
@@ -28,15 +97,25 @@ const TicketForm = ({ user }) => {
     setSuccess('');
 
     try {
-      await axios.post('/tickets', formData);
+      // Create the ticket first
+      const ticketResponse = await axios.post('/tickets', formData);
+      const ticketId = ticketResponse.data.id;
+      
+      // Upload attachments if any
+      if (attachments.length > 0) {
+        await uploadAttachments(ticketId);
+      }
+      
       setSuccess('Ticket created successfully! Redirecting...');
       
       // Reset form
       setFormData({
         subject: '',
         message: '',
-        priority: 'medium'
+        priority: 'medium',
+        category: 'general'
       });
+      setAttachments([]);
       
       // Redirect to tickets list after 2 seconds
       setTimeout(() => {
@@ -131,6 +210,24 @@ const TicketForm = ({ user }) => {
             </div>
 
             <div>
+              <label htmlFor="category" className="block text-sm font-medium text-gray-700">
+                Category *
+              </label>
+              <select
+                id="category"
+                name="category"
+                required
+                value={formData.category}
+                onChange={handleChange}
+                className="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm px-3 py-2 border"
+              >
+                {categories.map((category) => (
+                  <option key={category.id} value={category.name}>
+                    {category.description}
+                  </option>
+                ))}
+              </select>
+            </div>            <div>
               <label htmlFor="message" className="block text-sm font-medium text-gray-700">
                 Message *
               </label>
@@ -147,6 +244,49 @@ const TicketForm = ({ user }) => {
               <p className="mt-2 text-sm text-gray-500">
                 Provide as much detail as possible to help us resolve your issue quickly.
               </p>
+            </div>
+
+            <div>
+              <label htmlFor="attachments" className="block text-sm font-medium text-gray-700">
+                Attachments
+              </label>
+              <input
+                type="file"
+                id="attachments"
+                multiple
+                onChange={handleFileChange}
+                className="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
+                accept=".jpg,.jpeg,.png,.gif,.pdf,.doc,.docx,.txt,.zip,.rar"
+              />
+              <p className="mt-1 text-sm text-gray-500">
+                Upload images, documents, or archives (max 10MB per file)
+              </p>
+              
+              {attachments.length > 0 && (
+                <div className="mt-3">
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Selected Files:</h4>
+                  <div className="space-y-2">
+                    {attachments.map((file, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gray-50 p-2 rounded-md">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm text-gray-600">📎</span>
+                          <span className="text-sm text-gray-800">{file.name}</span>
+                          <span className="text-xs text-gray-500">
+                            ({(file.size / 1024 / 1024).toFixed(2)} MB)
+                          </span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => removeAttachment(index)}
+                          className="text-red-600 hover:text-red-800 text-sm"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between">

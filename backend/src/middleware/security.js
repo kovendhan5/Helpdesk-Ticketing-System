@@ -70,7 +70,7 @@ export function createRateLimiter(options = {}) {
  */
 export function loginRateLimiter(options = {}) {
   const {
-    maxAttempts = 5,
+    maxAttempts = 100, // Increased from 5 to 100 for testing
     lockoutTime = 15 * 60 * 1000, // 15 minutes
     windowMs = 60 * 60 * 1000 // 1 hour
   } = options;

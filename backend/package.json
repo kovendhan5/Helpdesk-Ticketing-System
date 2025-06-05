@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Backend API for Helpdesk Ticketing System",
   "main": "src/index.js",
-  "type": "module",  "scripts": {
+  "type": "module",
+  "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js",
     "setup": "node setup-db.js",
@@ -30,6 +31,8 @@
     "express-validator": "^7.2.1",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "nodemailer": "^6.9.8",
     "pg": "^8.11.3"
   }
 }

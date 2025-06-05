@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import axios from 'axios';
-import TicketForm from './components/TicketForm';
-import TicketList from './components/TicketList';
+import { useEffect, useState } from 'react';
+import { Navigate, Route, BrowserRouter as Router, Routes } from 'react-router-dom';
+import AdminDashboard from './components/AdminDashboard';
 import Login from './components/Login';
 import Register from './components/Register';
+import TicketDetail from './components/TicketDetail';
+import TicketForm from './components/TicketForm';
+import TicketList from './components/TicketList';
 
 // Configure axios defaults
 axios.defaults.baseURL = process.env.NODE_ENV === 'production' 
@@ -85,8 +87,7 @@ function App() {
                   <h1 className="text-xl font-semibold text-gray-900">
                     🎫 Helpdesk Ticketing System
                   </h1>
-                </div>
-                <div className="flex items-center space-x-4">
+                </div>                <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-700">
                     Welcome, {user.email} 
                     {user.role === 'admin' && (
@@ -95,6 +96,14 @@ function App() {
                       </span>
                     )}
                   </span>
+                  {user.role === 'admin' && (
+                    <a
+                      href="/admin"
+                      className="text-blue-600 hover:text-blue-500 font-medium text-sm"
+                    >
+                      Dashboard
+                    </a>
+                  )}
                   <button
                     onClick={logout}
                     className="bg-red-600 text-white px-3 py-2 rounded-md text-sm font-medium hover:bg-red-700 transition-colors"
@@ -121,9 +130,7 @@ function App() {
               element={
                 user ? <Navigate to="/tickets" replace /> : <Register />
               }
-            />
-
-            {/* Protected routes */}
+            />            {/* Protected routes */}
             <Route
               path="/tickets"
               element={
@@ -131,9 +138,21 @@ function App() {
               }
             />
             <Route
+              path="/tickets/:id"
+              element={
+                user ? <TicketDetail user={user} /> : <Navigate to="/login" replace />
+              }
+            />
+            <Route
               path="/create-ticket"
               element={
                 user ? <TicketForm user={user} /> : <Navigate to="/login" replace />
+              }
+            />
+            <Route
+              path="/admin"
+              element={
+                user && user.role === 'admin' ? <AdminDashboard user={user} /> : <Navigate to="/tickets" replace />
               }
             />
 

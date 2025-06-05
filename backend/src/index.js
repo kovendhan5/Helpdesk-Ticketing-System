@@ -1,18 +1,18 @@
-import express from 'express';
 import cors from 'cors';
-import helmet from 'helmet';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import express from 'express';
+import helmet from 'helmet';
 import pool, { initializeDatabase } from './db.js';
+import { validateJWTConfig } from './middleware/auth.js';
+import {
+  createRateLimiter,
+  sanitizeInput,
+  securityHeaders,
+  securityLogger
+} from './middleware/security.js';
 import authRoutes from './routes/auth.js';
 import ticketRoutes from './routes/tickets.js';
-import { validateJWTConfig } from './middleware/auth.js';
-import { 
-  createRateLimiter, 
-  securityHeaders, 
-  securityLogger,
-  sanitizeInput 
-} from './middleware/security.js';
 
 // Load environment variables
 dotenv.config();
@@ -83,22 +83,22 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Rate limiting for different endpoints
+// Rate limiting for different endpoints - Increased limits for testing
 app.use('/api/auth/login', createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 5, // 5 attempts per window
+  maxRequests: 100, // Increased from 5 to 100 attempts per window
   message: 'Too many login attempts, please try again later'
 }));
 
 app.use('/api/auth/register', createRateLimiter({
   windowMs: 60 * 60 * 1000, // 1 hour
-  maxRequests: 3, // 3 registration attempts per hour
+  maxRequests: 50, // Increased from 3 to 50 registration attempts per hour
   message: 'Too many registration attempts, please try again later'
 }));
 
 app.use('/api', createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 100, // 100 requests per window for general API
+  maxRequests: 1000, // Increased from 100 to 1000 requests per window for general API
   message: 'Too many API requests, please try again later'
 }));
 
