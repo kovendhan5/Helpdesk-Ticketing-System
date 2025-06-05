@@ -4,7 +4,7 @@ class EmailService {
   constructor() {
     // Configure nodemailer transporter
     // In production, use environment variables for email configuration
-    this.transporter = nodemailer.createTransporter({
+    this.transporter = nodemailer.createTransport({
       // For development, you can use a service like Ethereal Email or configure SMTP
       host: process.env.SMTP_HOST || 'smtp.ethereal.email',
       port: process.env.SMTP_PORT || 587,
