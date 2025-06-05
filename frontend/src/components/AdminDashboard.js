@@ -5,6 +5,7 @@ const AdminDashboard = ({ user }) => {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [emailTest, setEmailTest] = useState({ loading: false, message: '', error: '', email: '' });
 
   useEffect(() => {
     const fetchDashboardStats = async () => {
@@ -24,6 +25,30 @@ const AdminDashboard = ({ user }) => {
       fetchDashboardStats();
     }
   }, [user.role]);
+
+  const testEmailService = async () => {
+    setEmailTest({ ...emailTest, loading: true, message: '', error: '' });
+    
+    try {
+      const response = await axios.post('/tickets/admin/test-email', {
+        testEmail: emailTest.email || user.email
+      });
+      
+      setEmailTest({
+        ...emailTest,
+        loading: false,
+        message: response.data.message,
+        error: ''
+      });
+    } catch (error) {
+      setEmailTest({
+        ...emailTest,
+        loading: false,
+        message: '',
+        error: error.response?.data?.error || 'Failed to test email service'
+      });
+    }
+  };
 
   if (user.role !== 'admin') {
     return (
@@ -227,7 +252,7 @@ const AdminDashboard = ({ user }) => {
       </div>
 
       {/* Performance Metrics */}
-      <div className="bg-white rounded-lg shadow p-6">
+      <div className="bg-white rounded-lg shadow p-6 mb-8">
         <h3 className="text-lg font-medium text-gray-900 mb-4">Performance Metrics</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="text-center">
@@ -249,6 +274,43 @@ const AdminDashboard = ({ user }) => {
             <p className="text-sm text-gray-600">Unassigned Rate</p>
           </div>
         </div>
+      </div>
+
+      {/* Email Service Test */}
+      <div className="bg-white rounded-lg shadow p-6">
+        <h3 className="text-lg font-medium text-gray-900 mb-4">Email Service Test</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Test the email notification service to ensure it's working correctly.
+        </p>
+        
+        <div className="flex flex-col sm:flex-row gap-4">
+          <input
+            type="email"
+            placeholder={`Test email (default: ${user.email})`}
+            value={emailTest.email}
+            onChange={(e) => setEmailTest({ ...emailTest, email: e.target.value })}
+            className="flex-1 border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500"
+          />
+          <button
+            onClick={testEmailService}
+            disabled={emailTest.loading}
+            className="bg-primary-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-primary-700 disabled:opacity-50 disabled:cursor-not-allowed min-w-[120px]"
+          >
+            {emailTest.loading ? 'Testing...' : 'Test Email'}
+          </button>
+        </div>
+        
+        {emailTest.message && (
+          <div className="mt-4 p-3 bg-green-100 border border-green-400 text-green-700 rounded">
+            ✅ {emailTest.message}
+          </div>
+        )}
+        
+        {emailTest.error && (
+          <div className="mt-4 p-3 bg-red-100 border border-red-400 text-red-700 rounded">
+            ❌ {emailTest.error}
+          </div>
+        )}
       </div>
     </div>
   );
