@@ -417,9 +417,10 @@ const TicketList = ({ user }) => {
             </div>
           )}
         </>
-      )}
-    </div>
+      )}    </div>
   );
 };
+
+export default TicketList;
 
 
