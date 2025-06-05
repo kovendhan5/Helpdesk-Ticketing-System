@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
 const TicketDetail = ({ user }) => {
@@ -21,9 +21,9 @@ const TicketDetail = ({ user }) => {
     if (user.role === 'admin') {
       fetchAdminUsers();
     }
-  }, [id, user.role]);
+  }, [fetchTicketDetails, user.role]);
 
-  const fetchTicketDetails = async () => {
+  const fetchTicketDetails = useCallback(async () => {
     try {
       setLoading(true);
       const response = await axios.get(`/tickets/${id}`);
@@ -46,7 +46,7 @@ const TicketDetail = ({ user }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [id]);
 
   const fetchAdminUsers = async () => {
     try {
