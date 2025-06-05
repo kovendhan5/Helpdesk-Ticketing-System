@@ -17,15 +17,14 @@ const TicketList = ({ user }) => {
     limit: 10
   });
   const [categories, setCategories] = useState([]);
-
   useEffect(() => {
     fetchTickets();
     fetchCategories();
-  }, []);
+  }, [fetchTickets]);
 
   useEffect(() => {
     fetchTickets();
-  }, [filters]);
+  }, [fetchTickets]);
 
   const fetchCategories = async () => {
     try {

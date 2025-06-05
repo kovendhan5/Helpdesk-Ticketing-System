@@ -16,13 +16,6 @@ const TicketDetail = ({ user }) => {
   const [adminUsers, setAdminUsers] = useState([]);
   const [uploadingFile, setUploadingFile] = useState(false);
 
-  useEffect(() => {
-    fetchTicketDetails();
-    if (user.role === 'admin') {
-      fetchAdminUsers();
-    }
-  }, [fetchTicketDetails, user.role]);
-
   const fetchTicketDetails = useCallback(async () => {
     try {
       setLoading(true);
@@ -47,6 +40,13 @@ const TicketDetail = ({ user }) => {
       setLoading(false);
     }
   }, [id]);
+
+  useEffect(() => {
+    fetchTicketDetails();
+    if (user.role === 'admin') {
+      fetchAdminUsers();
+    }
+  }, [fetchTicketDetails, user.role]);
 
   const fetchAdminUsers = async () => {
     try {
