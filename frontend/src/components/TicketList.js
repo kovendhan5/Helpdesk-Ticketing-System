@@ -12,19 +12,10 @@ const TicketList = ({ user }) => {
     status: '',
     priority: '',
     category: '',
-    search: '',
-    page: 1,
+    search: '',    page: 1,
     limit: 10
   });
   const [categories, setCategories] = useState([]);
-  useEffect(() => {
-    fetchTickets();
-    fetchCategories();
-  }, [fetchTickets]);
-
-  useEffect(() => {
-    fetchTickets();
-  }, [fetchTickets]);
 
   const fetchCategories = async () => {
     try {
@@ -61,6 +52,15 @@ const TicketList = ({ user }) => {
       setLoading(false);
     }
   }, [user.role, filters]);
+
+  useEffect(() => {
+    fetchTickets();
+    fetchCategories();
+  }, [fetchTickets]);
+
+  useEffect(() => {
+    fetchTickets();
+  }, [fetchTickets]);
 
   // Update ticket status (admin only)
   const updateTicketStatus = async (ticketId, newStatus) => {
