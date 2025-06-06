@@ -1,6 +1,8 @@
 import jwt from 'jsonwebtoken';
 import { Server } from 'socket.io';
-import { JWT_CONFIG } from '../middleware/auth.js';
+import authMiddleware from '../middleware/auth.js';
+
+const { JWT_CONFIG } = authMiddleware;
 
 class WebSocketService {
   constructor() {
@@ -10,21 +12,25 @@ class WebSocketService {
   }
 
   initialize(server) {
-    this.io = new Server(server, {
-      cors: {
-        origin: [
-          'http://localhost:3000',
-          'http://localhost:3001',
-          'http://127.0.0.1:3000'
-        ],
-        methods: ['GET', 'POST'],
-        credentials: true
-      },
-      transports: ['websocket', 'polling']
-    });
+    try {
+      console.log('🔌 Initializing WebSocket service...');
+      this.io = new Server(server, {
+        cors: {
+          origin: [
+            'http://localhost:3000',
+            'http://localhost:3001',
+            'http://127.0.0.1:3000'
+          ],
+          methods: ['GET', 'POST'],
+          credentials: true
+        },
+        transports: ['websocket', 'polling']
+      });
 
-    // Authentication middleware for Socket.IO
-    this.io.use(async (socket, next) => {
+      console.log('✅ WebSocket server created with CORS configuration');
+
+      // Authentication middleware for Socket.IO
+      this.io.use(async (socket, next) => {
       try {
         const token = socket.handshake.auth.token || socket.handshake.headers.authorization?.split(' ')[1];
         
@@ -50,6 +56,10 @@ class WebSocketService {
     });
 
     console.log('🔌 WebSocket service initialized');
+    } catch (error) {
+      console.error('❌ WebSocket service initialization failed:', error);
+      throw error;
+    }
   }
 
   handleConnection(socket) {

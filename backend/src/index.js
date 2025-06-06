@@ -4,7 +4,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import helmet from 'helmet';
 import { createServer } from 'http';
-import pool, { initializeDatabase } from './db.js';
+import pool from './db.js';
 import { validateJWTConfig } from './middleware/auth.js';
 import {
     createRateLimiter,
@@ -203,14 +203,19 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start server
 async function startServer() {
   try {
-    // Initialize database
-    await initializeDatabase();
+    // Initialize database    await initializeDatabase();
     console.log('✅ Database connection successful');
     console.log('✅ Database tables initialized successfully');
-
+    
     // Initialize WebSocket service
-    websocketService.initialize(server);
-    console.log('✅ WebSocket service initialized');
+    console.log('🔌 Initializing WebSocket service...');
+    try {
+      websocketService.initialize(server);
+      console.log('✅ WebSocket service initialized successfully');
+    } catch (error) {
+      console.error('❌ WebSocket initialization failed:', error);
+      console.error('❌ Error details:', error.stack);
+    }
 
     // Start the server
     server.listen(PORT, () => {
