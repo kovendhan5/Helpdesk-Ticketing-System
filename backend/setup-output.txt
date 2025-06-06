@@ -1,0 +1,30 @@
+🔗 Database configuration: {
+  host: 'postgres',
+  port: 5432,
+  database: 'helpdesk_db',
+  user: 'postgres',
+  password: '***hidden***',
+  ssl: false,
+  max: 20,
+  idleTimeoutMillis: 30000,
+  connectionTimeoutMillis: 2000
+}
+🔍 Environment variables check:
+DB_HOST: postgres
+DB_PORT: 5432
+DB_NAME: helpdesk_db
+DB_USER: postgres
+DB_PASSWORD: ***set***
+🔧 Setting up database...
+❌ Database setup failed: Error: Connection terminated due to connection timeout
+    at k:\Devops\testpage\Helpdesk-Ticketing-System\backend\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+    at async setupDatabase (file:///k:/Devops/testpage/Helpdesk-Ticketing-System/backend/setup-db-secure.js:12:20) {
+  [cause]: Error: Connection terminated unexpectedly
+      at Connection.<anonymous> (k:\Devops\testpage\Helpdesk-Ticketing-System\backend\node_modules\pg\lib\client.js:136:73)
+      at Object.onceWrapper (node:events:632:28)
+      at Connection.emit (node:events:518:28)
+      at Socket.<anonymous> (k:\Devops\testpage\Helpdesk-Ticketing-System\backend\node_modules\pg\lib\connection.js:62:12)
+      at Socket.emit (node:events:518:28)
+      at TCP.<anonymous> (node:net:351:12)
+}
