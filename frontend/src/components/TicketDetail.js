@@ -1,10 +1,12 @@
 import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useWebSocket } from '../contexts/WebSocketContext';
 
 const TicketDetail = ({ user }) => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isConnected, on, joinRoom, leaveRoom } = useWebSocket();
   const [ticket, setTicket] = useState(null);
   const [comments, setComments] = useState([]);
   const [attachments, setAttachments] = useState([]);
@@ -56,6 +58,57 @@ const TicketDetail = ({ user }) => {
       fetchAdminUsers();
     }
   }, [fetchTicketDetails, fetchAdminUsers, user.role]);
+
+  // WebSocket integration for real-time updates
+  useEffect(() => {
+    if (!isConnected || !id) return;
+
+    // Join the ticket-specific room for real-time updates
+    joinRoom(`ticket:${id}`);
+
+    // Listen for ticket updates
+    const unsubscribeTicketUpdated = on('ticket:updated', (data) => {
+      if (data.ticket && data.ticket.id === parseInt(id)) {
+        console.log('📨 Received ticket update:', data);
+        setTicket(data.ticket);
+        // Show notification
+        setError('Ticket was updated by ' + data.updatedBy);
+        setTimeout(() => setError(''), 3000);
+      }
+    });
+
+    // Listen for new comments
+    const unsubscribeTicketCommented = on('ticket:commented', (data) => {
+      if (data.ticket && data.ticket.id === parseInt(id)) {
+        console.log('💬 Received new comment:', data);
+        // Refresh comments to show the new one
+        fetchTicketDetails();
+        // Show notification if comment is not from current user
+        if (data.commentBy !== user.email) {
+          setError('New comment added by ' + data.commentBy);
+          setTimeout(() => setError(''), 3000);
+        }
+      }
+    });
+
+    // Listen for ticket assignment
+    const unsubscribeTicketAssigned = on('ticket:assigned', (data) => {
+      if (data.ticket && data.ticket.id === parseInt(id)) {
+        console.log('👤 Received ticket assignment:', data);
+        setTicket(data.ticket);
+        setError('Ticket was assigned to ' + data.assignedTo);
+        setTimeout(() => setError(''), 3000);
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      leaveRoom(`ticket:${id}`);
+      unsubscribeTicketUpdated();
+      unsubscribeTicketCommented();
+      unsubscribeTicketAssigned();
+    };
+  }, [isConnected, id, on, joinRoom, leaveRoom, user.email, fetchTicketDetails]);
 
   const addComment = async (e) => {
     e.preventDefault();

@@ -1,12 +1,15 @@
 import axios from 'axios';
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useWebSocket } from '../contexts/WebSocketContext';
 
 const TicketList = ({ user }) => {
   const navigate = useNavigate();
+  const { isConnected, on, joinRoom, leaveRoom } = useWebSocket();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notification, setNotification] = useState('');
   const [filters, setFilters] = useState({
     userEmail: '',
     status: '',
@@ -15,7 +18,7 @@ const TicketList = ({ user }) => {
     search: '',
     page: 1,
     limit: 10
-  });  const [categories, setCategories] = useState([]);
+  });const [categories, setCategories] = useState([]);
 
   // Fetch categories from API
   const fetchCategories = useCallback(async () => {
@@ -52,19 +55,97 @@ const TicketList = ({ user }) => {
     } finally {
       setLoading(false);    }
   }, [user.role, filters]);
-
   // Load initial data
   useEffect(() => {
     fetchTickets();
     fetchCategories();
   }, [fetchTickets, fetchCategories]);
 
+  // WebSocket real-time updates
+  useEffect(() => {
+    if (!isConnected) return;
+
+    // Join appropriate rooms for real-time updates
+    if (user.role === 'admin') {
+      joinRoom('admin');
+    }
+    joinRoom(`user:${user.id}`);
+
+    // Show notification helper
+    const showNotification = (message) => {
+      setNotification(message);
+      setTimeout(() => setNotification(''), 3000);
+    };
+
+    // Listen for new tickets
+    const unsubscribeTicketCreated = on('ticket:created', (data) => {
+      console.log('🎫 New ticket created:', data);
+      
+      // Add the new ticket to the list if it matches current filters
+      setTickets(prevTickets => {
+        // Check if ticket already exists (prevent duplicates)
+        if (prevTickets.some(t => t.id === data.ticket.id)) {
+          return prevTickets;
+        }
+        
+        // For admins, show all new tickets
+        // For users, only show their own tickets
+        if (user.role === 'admin' || data.ticket.user_id === user.id) {
+          showNotification(`📝 New ticket created: ${data.ticket.title}`);
+          return [data.ticket, ...prevTickets];
+        }
+        
+        return prevTickets;
+      });
+    });
+
+    // Listen for ticket updates
+    const unsubscribeTicketUpdated = on('ticket:updated', (data) => {
+      console.log('📝 Ticket updated:', data);
+      
+      setTickets(prevTickets => 
+        prevTickets.map(ticket => 
+          ticket.id === data.ticket.id 
+            ? { ...ticket, ...data.ticket }
+            : ticket
+        )
+      );
+
+      // Show notification if this update affects the current user
+      if (user.role === 'admin' || data.ticket.user_id === user.id || data.ticket.assigned_to === user.id) {
+        showNotification(`✏️ Ticket updated: ${data.ticket.title}`);
+      }
+    });
+
+    // Listen for ticket comments (to update comment counts if needed)
+    const unsubscribeTicketCommented = on('ticket:commented', (data) => {
+      console.log('💬 New comment on ticket:', data);
+      
+      // Show notification if this comment affects the current user
+      if ((user.role === 'admin' || data.ticket.user_id === user.id || data.ticket.assigned_to === user.id) && 
+          data.comment.user_id !== user.id) {
+        showNotification(`💬 New comment on ticket: ${data.ticket.title}`);
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      unsubscribeTicketCreated();
+      unsubscribeTicketUpdated();
+      unsubscribeTicketCommented();
+      
+      if (user.role === 'admin') {
+        leaveRoom('admin');
+      }
+      leaveRoom(`user:${user.id}`);
+    };
+  }, [isConnected, user, on, joinRoom, leaveRoom]);
+
   // Update ticket status (admin only)
   const updateTicketStatus = async (ticketId, newStatus) => {
     try {
       await axios.patch(`/tickets/${ticketId}`, { status: newStatus });
-      // Refresh tickets after update
-      fetchTickets();
+      // No need to refresh - WebSocket will handle the update
     } catch (error) {
       setError('Failed to update ticket status. Please try again.');
       console.error('Update ticket error:', error);

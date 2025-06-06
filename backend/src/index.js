@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import dotenv from 'dotenv';
 import express from 'express';
 import helmet from 'helmet';
+import { createServer } from 'http';
 import pool, { initializeDatabase } from './db.js';
 import { validateJWTConfig } from './middleware/auth.js';
 import {
@@ -13,6 +14,7 @@ import {
 } from './middleware/security.js';
 import authRoutes from './routes/auth.js';
 import ticketRoutes from './routes/tickets.js';
+import websocketService from './services/websocketService.js';
 
 // Load environment variables
 dotenv.config();
@@ -27,7 +29,11 @@ try {
 }
 
 const app = express();
+const server = createServer(app);
 const PORT = process.env.PORT || 3001;
+
+// Make websocket service available globally
+app.locals.websocket = websocketService;
 
 // Security middleware (applied first)
 app.use(securityLogger());
@@ -202,11 +208,16 @@ async function startServer() {
     console.log('✅ Database connection successful');
     console.log('✅ Database tables initialized successfully');
 
+    // Initialize WebSocket service
+    websocketService.initialize(server);
+    console.log('✅ WebSocket service initialized');
+
     // Start the server
-    app.listen(PORT, () => {
+    server.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
       console.log(`📊 Health check: http://localhost:${PORT}/health`);
       console.log(`🔐 API endpoints: http://localhost:${PORT}/api`);
+      console.log(`🔌 WebSocket server running on the same port`);
       console.log(`🛡️  Security features enabled:`);
       console.log(`   • Rate limiting active`);
       console.log(`   • Security headers configured`);
@@ -214,6 +225,7 @@ async function startServer() {
       console.log(`   • CORS protection active`);
       console.log(`   • JWT validation enhanced`);
       console.log(`   • Password strength validation enabled`);
+      console.log(`   • WebSocket authentication enabled`);
       
       if (process.env.NODE_ENV === 'development') {
         console.log(`⚠️  Development mode: Some security features relaxed`);

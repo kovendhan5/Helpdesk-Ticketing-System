@@ -67,9 +67,17 @@ router.post('/', authenticateToken, async (req, res) => {
     const result = await pool.query(
       'INSERT INTO tickets (user_email, subject, message, priority, category) VALUES ($1, $2, $3, $4, $5) RETURNING *',
       [userEmail, subject, message, priority, category || 'general']
-    );
+    );    const ticket = result.rows[0];
 
-    const ticket = result.rows[0];
+    // Emit WebSocket event for ticket creation
+    try {
+      const websocket = req.app.locals.websocket;
+      if (websocket) {
+        websocket.emitTicketCreated(ticket, userEmail);
+      }
+    } catch (wsError) {
+      console.error('Failed to emit WebSocket event for ticket creation:', wsError);
+    }
 
     // Send email notification
     try {
@@ -225,8 +233,17 @@ router.patch('/:id', authenticateToken, requireAdmin, async (req, res) => {
     const updateQuery = `UPDATE tickets SET ${updateFields.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
     params.push(id);
     
-    const result = await pool.query(updateQuery, params);
-    const updatedTicket = result.rows[0];
+    const result = await pool.query(updateQuery, params);    const updatedTicket = result.rows[0];
+
+    // Emit WebSocket event for ticket update
+    try {
+      const websocket = req.app.locals.websocket;
+      if (websocket) {
+        websocket.emitTicketUpdated(updatedTicket, req.user.email, currentTicket);
+      }
+    } catch (wsError) {
+      console.error('Failed to emit WebSocket event for ticket update:', wsError);
+    }
 
     // Send email notifications for changes
     try {
@@ -367,18 +384,26 @@ router.post('/:id/comments', authenticateToken, async (req, res) => {
     const result = await pool.query(
       'INSERT INTO ticket_comments (ticket_id, user_email, comment, is_internal) VALUES ($1, $2, $3, $4) RETURNING *',
       [id, userEmail, comment.trim(), isInternalComment]
-    );
-
-    // Update ticket's updated_at timestamp
+    );    // Update ticket's updated_at timestamp
     await pool.query('UPDATE tickets SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [id]);
+
+    // Get ticket details for WebSocket and email notifications
+    const ticketForNotification = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
+    const ticket = ticketForNotification.rows[0];
+
+    // Emit WebSocket event for new comment
+    try {
+      const websocket = req.app.locals.websocket;
+      if (websocket) {
+        websocket.emitNewComment(ticket, result.rows[0], userEmail);
+      }
+    } catch (wsError) {
+      console.error('Failed to emit WebSocket event for comment:', wsError);
+    }
 
     // Send email notifications for comments (only for non-internal comments)
     if (!isInternalComment) {
       try {
-        // Get ticket details for email
-        const ticketResult = await pool.query('SELECT * FROM tickets WHERE id = $1', [id]);
-        const ticket = ticketResult.rows[0];
-        
         // Send notification to ticket owner if comment is not from them
         if (ticket.user_email !== userEmail) {
           await emailService.sendCommentNotification(ticket, result.rows[0], ticket.user_email);
