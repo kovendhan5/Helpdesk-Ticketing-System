@@ -16,13 +16,6 @@ const TicketDetail = ({ user }) => {
   const [adminUsers, setAdminUsers] = useState([]);
   const [uploadingFile, setUploadingFile] = useState(false);
 
-  useEffect(() => {
-    fetchTicketDetails();
-    if (user.role === 'admin') {
-      fetchAdminUsers();
-    }
-  }, [fetchTicketDetails, fetchAdminUsers, user.role]);
-
   const fetchTicketDetails = useCallback(async () => {
     try {
       setLoading(true);
@@ -56,6 +49,13 @@ const TicketDetail = ({ user }) => {
       console.error('Fetch admin users error:', error);
     }
   }, []);
+
+  useEffect(() => {
+    fetchTicketDetails();
+    if (user.role === 'admin') {
+      fetchAdminUsers();
+    }
+  }, [fetchTicketDetails, fetchAdminUsers, user.role]);
 
   const addComment = async (e) => {
     e.preventDefault();
