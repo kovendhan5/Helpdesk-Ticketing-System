@@ -234,9 +234,29 @@ const TicketList = ({ user }) => {
     const category = categories.find(cat => cat.name === categoryName);
     return category?.description || categoryName.replace('_', ' ');
   };
-
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Real-time notification */}
+      {notification && (
+        <div className="mb-4 bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-blue-800 font-medium">
+                {notification}
+              </p>
+            </div>
+            <div className="ml-auto">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                {isConnected ? '🟢 Live' : '🔴 Offline'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -245,6 +265,11 @@ const TicketList = ({ user }) => {
           </h1>
           <p className="text-sm text-gray-500 mt-1">
             {tickets.length} {tickets.length === 1 ? 'ticket' : 'tickets'} found
+            {isConnected && (
+              <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+                🟢 Live Updates
+              </span>
+            )}
           </p>
         </div>
         <div className="flex space-x-3">

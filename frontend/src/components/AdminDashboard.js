@@ -1,10 +1,13 @@
 import axios from 'axios';
 import { useEffect, useState } from 'react';
+import { useWebSocket } from '../contexts/WebSocketContext';
 
 const AdminDashboard = ({ user }) => {
+  const { isConnected, on, joinRoom, leaveRoom } = useWebSocket();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [notification, setNotification] = useState('');
   const [emailTest, setEmailTest] = useState({ loading: false, message: '', error: '', email: '' });
 
   useEffect(() => {
@@ -25,6 +28,101 @@ const AdminDashboard = ({ user }) => {
       fetchDashboardStats();
     }
   }, [user.role]);
+
+  // WebSocket real-time updates for dashboard
+  useEffect(() => {
+    if (!isConnected || user.role !== 'admin') return;
+
+    // Join admin room for dashboard updates
+    joinRoom('admin');
+
+    // Show notification helper
+    const showNotification = (message) => {
+      setNotification(message);
+      setTimeout(() => setNotification(''), 3000);
+    };
+
+    // Update stats when tickets are created/updated
+    const updateStatsFromTicketEvent = (data) => {
+      if (!stats) return;
+
+      setStats(prevStats => {
+        const newStats = { ...prevStats };
+        
+        // Update based on the event type and ticket data
+        if (data.ticket) {
+          const ticket = data.ticket;
+          
+          // Update status counts
+          if (newStats.statusCounts) {
+            // This could be more sophisticated by tracking the previous state
+            // For now, we'll just increment the new status count
+            if (newStats.statusCounts[ticket.status] !== undefined) {
+              newStats.statusCounts[ticket.status]++;
+            }
+          }
+          
+          // Update priority counts
+          if (newStats.priorityCounts && ticket.priority) {
+            if (newStats.priorityCounts[ticket.priority] !== undefined) {
+              newStats.priorityCounts[ticket.priority]++;
+            }
+          }
+          
+          // Update category counts
+          if (newStats.categoryCounts && ticket.category) {
+            if (newStats.categoryCounts[ticket.category] !== undefined) {
+              newStats.categoryCounts[ticket.category]++;
+            } else {
+              newStats.categoryCounts[ticket.category] = 1;
+            }
+          }
+        }
+        
+        return newStats;
+      });
+    };
+
+    // Listen for new tickets
+    const unsubscribeTicketCreated = on('ticket:created', (data) => {
+      console.log('📊 Dashboard: New ticket created:', data);
+      showNotification(`📝 New ticket created: ${data.ticket.title}`);
+      
+      // Update total count
+      if (stats) {
+        setStats(prevStats => ({
+          ...prevStats,
+          totalTickets: prevStats.totalTickets + 1
+        }));
+      }
+      
+      updateStatsFromTicketEvent(data);
+    });
+
+    // Listen for ticket updates
+    const unsubscribeTicketUpdated = on('ticket:updated', (data) => {
+      console.log('📊 Dashboard: Ticket updated:', data);
+      showNotification(`✏️ Ticket status changed: ${data.ticket.title} → ${data.ticket.status}`);
+      
+      // For status changes, we might want to refresh stats
+      // This is a simplified approach - in production, you'd want more sophisticated tracking
+      updateStatsFromTicketEvent(data);
+    });
+
+    // Listen for ticket comments
+    const unsubscribeTicketCommented = on('ticket:commented', (data) => {
+      console.log('📊 Dashboard: New comment:', data);
+      showNotification(`💬 New comment on: ${data.ticket.title}`);
+    });
+
+    // Cleanup function
+    return () => {
+      unsubscribeTicketCreated();
+      unsubscribeTicketUpdated();
+      unsubscribeTicketCommented();
+      leaveRoom('admin');
+    };
+  }, [isConnected, user.role, stats, on, joinRoom, leaveRoom]);
 
   const testEmailService = async () => {
     setEmailTest({ ...emailTest, loading: true, message: '', error: '' });
@@ -106,10 +204,36 @@ const AdminDashboard = ({ user }) => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Real-time notification */}
+      {notification && (
+        <div className="mb-6 bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse"></div>
+            </div>
+            <div className="ml-3">
+              <p className="text-sm text-blue-800 font-medium">
+                {notification}
+              </p>
+            </div>
+            <div className="ml-auto">
+              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs bg-blue-100 text-blue-800">
+                {isConnected ? '🟢 Live' : '🔴 Offline'}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
         <p className="mt-2 text-sm text-gray-600">
           Overview of helpdesk tickets and system statistics
+          {isConnected && (
+            <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs bg-green-100 text-green-800">
+              🟢 Live Updates
+            </span>
+          )}
         </p>
       </div>
 
