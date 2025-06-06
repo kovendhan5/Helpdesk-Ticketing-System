@@ -16,10 +16,8 @@ const TicketList = ({ user }) => {
     page: 1,
     limit: 10
   });  const [categories, setCategories] = useState([]);
-  useEffect(() => {
-    fetchTickets();
-    fetchCategories();
-  }, [fetchTickets, fetchCategories]);
+
+  // Fetch categories from API
   const fetchCategories = useCallback(async () => {
     try {
       const response = await axios.get('/tickets/meta/categories');
@@ -52,9 +50,14 @@ const TicketList = ({ user }) => {
       setError('Failed to fetch tickets. Please try again.');
       console.error('Fetch tickets error:', error);
     } finally {
-      setLoading(false);
-    }
+      setLoading(false);    }
   }, [user.role, filters]);
+
+  // Load initial data
+  useEffect(() => {
+    fetchTickets();
+    fetchCategories();
+  }, [fetchTickets, fetchCategories]);
 
   // Update ticket status (admin only)
   const updateTicketStatus = async (ticketId, newStatus) => {

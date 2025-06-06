@@ -2,45 +2,22 @@ import nodemailer from 'nodemailer';
 
 class EmailService {
   constructor() {
-    this.transporter = null;
-    this.initialized = false;
-  }
-
-  async initializeTransporter() {
-    if (this.initialized) return;
-    
-    try {
-      // Configure nodemailer transporter
-      this.transporter = nodemailer.createTransport({
-        // For development, you can use a service like Ethereal Email or configure SMTP
-        host: process.env.SMTP_HOST || 'smtp.ethereal.email',
-        port: process.env.SMTP_PORT || 587,
-        secure: false, // true for 465, false for other ports
-        auth: {
-          user: process.env.SMTP_USER || '', // Set in environment variables
-          pass: process.env.SMTP_PASS || ''  // Set in environment variables
-        }
-      });
-      this.initialized = true;
-      console.log('Email service initialized successfully');
-    } catch (error) {
-      console.error('Failed to initialize email service:', error);
-      // Create a mock transporter for development
-      this.transporter = {
-        sendMail: async (options) => {
-          console.log('Mock email would be sent:', options.to, options.subject);
-          return { messageId: 'mock-' + Date.now() };
-        },
-        verify: async () => true
-      };
-      this.initialized = true;
-    }
+    // Configure nodemailer transporter
+    // In production, use environment variables for email configuration
+    this.transporter = nodemailer.createTransport({
+      // For development, you can use a service like Ethereal Email or configure SMTP
+      host: process.env.SMTP_HOST || 'smtp.ethereal.email',
+      port: process.env.SMTP_PORT || 587,
+      secure: false, // true for 465, false for other ports
+      auth: {
+        user: process.env.SMTP_USER || '', // Set in environment variables
+        pass: process.env.SMTP_PASS || ''  // Set in environment variables
+      }
+    });
   }
 
   async sendTicketCreatedNotification(ticket, userEmail) {
     try {
-      await this.initializeTransporter();
-      
       const mailOptions = {
         from: process.env.FROM_EMAIL || 'noreply@helpdesk.local',
         to: userEmail,
@@ -85,8 +62,6 @@ class EmailService {
 
   async sendTicketUpdateNotification(ticket, userEmail, updatedField, oldValue, newValue) {
     try {
-      await this.initializeTransporter();
-      
       const mailOptions = {
         from: process.env.FROM_EMAIL || 'noreply@helpdesk.local',
         to: userEmail,
@@ -132,8 +107,6 @@ class EmailService {
 
   async sendCommentNotification(ticket, comment, userEmail) {
     try {
-      await this.initializeTransporter();
-      
       // Don't send notification to the person who made the comment
       if (comment.user_email === userEmail) {
         return;
@@ -152,7 +125,6 @@ class EmailService {
             <h3>Ticket Details</h3>
             <p><strong>Ticket ID:</strong> #${ticket.id}</p>
             <p><strong>Subject:</strong> ${ticket.subject}</p>
-            <p><strong>Priority:</strong> ${ticket.priority}</p>
             <p><strong>Status:</strong> ${ticket.status}</p>
           </div>
           
@@ -185,7 +157,6 @@ class EmailService {
   // Test email configuration
   async testConnection() {
     try {
-      await this.initializeTransporter();
       await this.transporter.verify();
       console.log('Email service is ready to send emails');
       return true;
