@@ -1,6 +1,6 @@
-import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
 import dotenv from 'dotenv';
+import jwt from 'jsonwebtoken';
 
 dotenv.config();
 
@@ -202,6 +202,8 @@ export const getUserSessions = (userId) => {
 
 // Validate JWT configuration
 export const validateJWTConfig = () => {
+  console.log('🔐 JWT_SECRET Debug:', process.env.JWT_SECRET ? `${process.env.JWT_SECRET.substring(0, 10)}...` : 'undefined');
+  
   if (!JWT_CONFIG.secret || 
       JWT_CONFIG.secret === 'your_super_secret_jwt_key_here' ||
       JWT_CONFIG.secret === 'demo_jwt_secret_key_for_testing_only_change_in_production_a1b2c3d4e5f6789012345678901234567890') {
