@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 import express from 'express';
 import helmet from 'helmet';
 import pool, { initializeDatabase } from './db.js';
+import { validateJWTConfig } from './middleware/auth.js';
 import {
     createRateLimiter,
     sanitizeInput,
@@ -18,9 +19,8 @@ dotenv.config();
 
 // Validate critical security configuration
 try {
-  // Temporarily comment out JWT validation to debug
-  // validateJWTConfig();
-  console.log('⚠️  JWT validation temporarily disabled for debugging');
+  validateJWTConfig();
+  console.log('✅ JWT configuration validated successfully');
 } catch (error) {
   console.error('❌ Security configuration error:', error.message);
   process.exit(1);
