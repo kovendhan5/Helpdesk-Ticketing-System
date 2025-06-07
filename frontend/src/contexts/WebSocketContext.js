@@ -72,6 +72,7 @@ export const WebSocketProvider = ({ children }) => {
     return () => {
       newSocket.disconnect();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, user]);
 
   // Function to emit events

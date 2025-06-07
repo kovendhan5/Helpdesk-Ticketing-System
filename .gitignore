@@ -227,3 +227,16 @@ smtp-test.*
 ethereal-*.json
 mailgun-*.json
 sendgrid-*.json
+
+# Temporary test and development files
+create-users.js
+test-password.js
+test-db-connection.js
+websocket-test*.html
+comprehensive-test.bat
+test-attachments.bat
+*-test-final.*
+
+# System test files (keep system-test.html but exclude others)
+test-*.html
+!system-test.html

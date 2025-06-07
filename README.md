@@ -1,31 +1,34 @@
 # 🎫 Helpdesk Ticketing System
 
-A full-stack helpdesk ticketing system built with React, Node.js, PostgreSQL, and deployed on Google Cloud Platform with Terraform and GitHub Actions CI/CD.
+A modern, full-stack helpdesk ticketing system with real-time updates, built with React, Node.js, PostgreSQL, and deployed with Docker.
 
 ## 🏗️ Architecture
 
 - **Frontend**: React.js with Tailwind CSS
 - **Backend**: Node.js with Express.js
-- **Database**: PostgreSQL (Cloud SQL on GCP)
-- **Infrastructure**: GCP Compute Engine, VPC, Firewall rules
-- **Deployment**: Terraform for IaC, GitHub Actions for CI/CD
-- **Reverse Proxy**: NGINX
+- **Database**: PostgreSQL
+- **Real-time**: WebSocket/Socket.IO with JWT authentication
+- **Deployment**: Docker & Docker Compose
+- **Infrastructure**: Terraform for cloud deployment (optional)
 
 ## 🚀 Features
 
 ### User Features
+
 - ✅ User registration and authentication (JWT)
 - ✅ Create support tickets with priority levels
 - ✅ View personal ticket history
 - ✅ Responsive web interface
 
-### Admin Features  
+### Admin Features
+
 - ✅ View all tickets with filtering options
 - ✅ Update ticket status (open, in_progress, resolved)
 - ✅ User management capabilities
 - ✅ Delete tickets (cleanup)
 
 ### Technical Features
+
 - ✅ REST API with proper error handling
 - ✅ JWT-based authentication with 256-bit secrets
 - ✅ Input validation and SQL injection prevention
@@ -34,6 +37,7 @@ A full-stack helpdesk ticketing system built with React, Node.js, PostgreSQL, an
 - ✅ Infrastructure as Code (Terraform)
 
 ### 🔒 Security Features
+
 - ✅ **Enterprise-grade Authentication**: JWT with secure 256-bit secrets
 - ✅ **Password Security**: OWASP-compliant validation (12+ chars, complexity requirements)
 - ✅ **Rate Limiting**: Configurable limits to prevent brute force attacks
@@ -89,17 +93,20 @@ helpdesk-ticketing-system/
 ## 🛠️ Local Development Setup
 
 ### Prerequisites
+
 - Node.js 20.11.1 or later
 - PostgreSQL 16 or later
 - Git
 
 ### 1. Clone the Repository
+
 ```bash
 git clone <your-repo-url>
 cd helpdesk-ticketing-system
 ```
 
 ### 2. Setup Backend
+
 ```bash
 cd backend
 npm install
@@ -113,6 +120,7 @@ npm run dev
 ```
 
 ### 3. Setup Frontend
+
 ```bash
 cd frontend
 npm install
@@ -122,6 +130,7 @@ npm start
 ```
 
 ### 4. Setup Database
+
 ```sql
 -- Connect to PostgreSQL and create database
 CREATE DATABASE helpdesk_db;
@@ -132,6 +141,7 @@ GRANT ALL PRIVILEGES ON DATABASE helpdesk_db TO helpdesk_user;
 ```
 
 ### 5. Create Demo Accounts
+
 ```bash
 # Use the registration endpoint or insert directly:
 curl -X POST http://localhost:3001/api/auth/register \\
@@ -146,6 +156,7 @@ curl -X POST http://localhost:3001/api/auth/register \\
 ## 🌐 Production Deployment
 
 ### 1. GCP Setup
+
 1. Create a GCP project
 2. Enable required APIs:
    - Compute Engine API
@@ -155,6 +166,7 @@ curl -X POST http://localhost:3001/api/auth/register \\
 4. Download service account key as `terraform/credentials.json`
 
 ### 2. Terraform Deployment
+
 ```bash
 cd terraform
 
@@ -173,6 +185,7 @@ terraform apply
 ```
 
 ### 3. GitHub Actions Setup
+
 Configure these secrets in your GitHub repository:
 
 ```
@@ -186,7 +199,9 @@ JWT_SECRET=<your-jwt-secret>
 ```
 
 ### 4. Deploy Application
+
 Push to main branch to trigger automated deployment:
+
 ```bash
 git push origin main
 ```
@@ -196,6 +211,7 @@ git push origin main
 ### Authentication Endpoints
 
 #### Register User
+
 ```http
 POST /api/auth/register
 Content-Type: application/json
@@ -207,12 +223,13 @@ Content-Type: application/json
 ```
 
 #### Login User
+
 ```http
 POST /api/auth/login
 Content-Type: application/json
 
 {
-  "email": "user@example.com", 
+  "email": "user@example.com",
   "password": "password123"
 }
 ```
@@ -220,6 +237,7 @@ Content-Type: application/json
 ### Ticket Endpoints
 
 #### Create Ticket
+
 ```http
 POST /api/tickets
 Authorization: Bearer <jwt-token>
@@ -233,12 +251,14 @@ Content-Type: application/json
 ```
 
 #### Get Tickets
+
 ```http
 GET /api/tickets?page=1&limit=10
 Authorization: Bearer <jwt-token>
 ```
 
 #### Update Ticket Status (Admin Only)
+
 ```http
 PATCH /api/tickets/:id
 Authorization: Bearer <jwt-token>
@@ -254,6 +274,7 @@ Content-Type: application/json
 ### Environment Variables
 
 #### Backend (.env)
+
 ```env
 NODE_ENV=production
 PORT=3001
@@ -266,6 +287,7 @@ JWT_SECRET=<secure-jwt-secret>
 ```
 
 ### Database Schema
+
 ```sql
 -- Users table
 CREATE TABLE users (
@@ -276,7 +298,7 @@ CREATE TABLE users (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
--- Tickets table  
+-- Tickets table
 CREATE TABLE tickets (
   id SERIAL PRIMARY KEY,
   user_email TEXT NOT NULL REFERENCES users(email),
@@ -293,16 +315,19 @@ CREATE TABLE tickets (
 ### Common Issues
 
 1. **Backend won't start**
+
    - Check database connection
    - Verify environment variables
    - Ensure PostgreSQL is running
 
 2. **Frontend build fails**
+
    - Clear node_modules and reinstall
    - Check for syntax errors
    - Verify all dependencies are installed
 
 3. **Deployment fails**
+
    - Check GitHub secrets configuration
    - Verify SSH key permissions
    - Check VM accessibility
@@ -313,6 +338,7 @@ CREATE TABLE tickets (
    - Confirm credentials are correct
 
 ### Health Checks
+
 - Backend: `curl http://localhost:3001/health`
 - Frontend: Access `http://localhost:3000`
 - Production: `curl http://<vm-ip>/health`
@@ -341,7 +367,7 @@ This project is licensed under the MIT License.
 ## 🔗 Links
 
 - [Live Demo](http://your-vm-ip) (replace with actual IP)
-- [API Documentation](http://your-vm-ip/api/docs) 
+- [API Documentation](http://your-vm-ip/api/docs)
 - [GitHub Repository](https://github.com/your-username/helpdesk-ticketing-system)
 
 ---

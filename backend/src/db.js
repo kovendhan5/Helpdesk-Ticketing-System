@@ -25,7 +25,7 @@ const dbConfig = {
   database: process.env.DB_NAME || 'helpdesk_db',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD, // No fallback for security - must be set in environment
-  ssl: process.env.NODE_ENV === 'production' ? true : false,
+  ssl: false, // Disable SSL for local development - enable for production with proper certificates
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,
