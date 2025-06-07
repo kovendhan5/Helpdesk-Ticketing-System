@@ -30,10 +30,13 @@ jobs:
         run: |
           echo "🧹 Cleaning up previous installation..."
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            set -e
             cd ~
-            rm -rf Helpdesk-Ticketing-System helpdesk-app
-            pkill -f git -u \$(whoami) 2>/dev/null || true
-            echo '✅ Cleanup completed'
+            echo 'Removing old directories...'
+            rm -rf Helpdesk-Ticketing-System helpdesk-app 2>/dev/null || true
+            echo 'Stopping any git processes...'
+            pkill -f git -u \$(whoami) 2>/dev/null || echo 'No git processes to kill'
+            echo '✅ Cleanup completed successfully'
           "
 
       - name: 📥 Step 2 - Clone Repository
@@ -41,11 +44,13 @@ jobs:
           echo "📥 Cloning repository..."
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
             cd ~
+            echo 'Cloning from GitHub...'
             git clone https://github.com/kovendhan5/Helpdesk-Ticketing-System.git
             cd Helpdesk-Ticketing-System
             echo '📂 Repository cloned to: \$(pwd)'
             echo '📁 Files available:'
-            ls -la
+            ls -la | head -10
+            echo '✅ Repository clone completed'
           "
 
       - name: 🐳 Step 3 - Verify Docker Setup
@@ -79,9 +84,10 @@ jobs:
         run: |
           echo "🛑 Stopping existing containers..."
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
-            cd ~/helpdesk-app
-            docker-compose -f docker-compose.prod.yml down || echo 'No containers to stop'
-            docker container prune -f || true
+            cd ~/helpdesk-app 2>/dev/null || echo 'No previous helpdesk-app directory'
+            docker-compose -f docker-compose.prod.yml down 2>/dev/null || echo 'No containers to stop'
+            docker container prune -f 2>/dev/null || echo 'No containers to prune'
+            echo '✅ Container cleanup completed'
           "
 
       - name: 🏗️ Step 6 - Build and Start Containers
@@ -89,7 +95,9 @@ jobs:
           echo "🏗️ Building and starting containers..."
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
             cd ~/helpdesk-app
+            echo 'Starting Docker Compose build and deployment...'
             docker-compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            echo '✅ Containers started successfully'
           "
 
       - name: ⏳ Step 7 - Wait and Verify Deployment
