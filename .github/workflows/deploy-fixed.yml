@@ -2,14 +2,18 @@
 name: Deploy to Production (Fixed)
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch: # Only manual trigger
+    inputs:
+      reason:
+        description: "Reason for deployment"
+        required: false
+        default: "Manual deployment"
 
 jobs:
   deploy:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -24,17 +28,16 @@ jobs:
           VM_IP: ${{ secrets.VM_IP }}
         run: |
           echo "🚀 Deploying to production server..."
-          
+
           # Test connectivity first
           echo "🔍 Testing server connectivity..."
           echo "Server IP: $VM_IP"
-          
+
           # Test basic connectivity
           timeout 10 bash -c "echo >/dev/tcp/$VM_IP/22" && echo "✅ Port 22 is reachable" || echo "❌ Port 22 unreachable"
-          
-          # Test SSH connection with verbose output
+            # Test SSH connection with verbose output
           echo "🔐 Testing SSH connection..."
-          ssh -v -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o BatchMode=yes ubuntu@$VM_IP 'echo "✅ SSH connection successful"' || {
+          ssh -v -o StrictHostKeyChecking=no -o ConnectTimeout=30 -o BatchMode=yes ${{ secrets.VM_USER }}@$VM_IP 'echo "✅ SSH connection successful"' || {
             echo "❌ SSH connection failed. Checking common issues..."
             echo "- Verify VM_IP secret is correct: $VM_IP"
             echo "- Verify SSH_PRIVATE_KEY secret contains valid private key"
@@ -42,17 +45,16 @@ jobs:
             echo "- Verify firewall allows SSH on port 22"
             exit 1
           }
-          
+
           # Create deployment package
           tar czf deploy.tar.gz docker-compose.yml backend/ frontend/
-          
-          # Deploy in a single SSH session
-          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ubuntu@$VM_IP '
+            # Deploy in a single SSH session
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ${{ secrets.VM_USER }}@$VM_IP '
             set -e
             
             echo "🏗️ Setting up deployment environment..."
             sudo mkdir -p /opt/helpdesk-ticketing-system
-            sudo chown ubuntu:ubuntu /opt/helpdesk-ticketing-system
+            sudo chown ${{ secrets.VM_USER }}:${{ secrets.VM_USER }} /opt/helpdesk-ticketing-system
             cd /opt/helpdesk-ticketing-system
             
             # Stop existing containers
@@ -77,13 +79,11 @@ jobs:
               echo "✅ Docker already available"
             fi
           '
-          
-          echo "📤 Copying files to server..."
+            echo "📤 Copying files to server..."
           scp -o StrictHostKeyChecking=no -o ConnectTimeout=30 \
-            deploy.tar.gz ubuntu@$VM_IP:/opt/helpdesk-ticketing-system/
-          
-          echo "🏗️ Extracting and starting services..."
-          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ubuntu@$VM_IP '
+            deploy.tar.gz ${{ secrets.VM_USER }}@$VM_IP:/opt/helpdesk-ticketing-system/
+            echo "🏗️ Extracting and starting services..."
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ${{ secrets.VM_USER }}@$VM_IP '
             set -e
             cd /opt/helpdesk-ticketing-system
             
@@ -137,11 +137,11 @@ jobs:
           VM_IP: ${{ secrets.VM_IP }}
         run: |
           echo "🏥 Running comprehensive health check..."
-          
+
           # Wait for services to fully start
           sleep 45
-          
-          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ubuntu@$VM_IP '
+
+          ssh -o StrictHostKeyChecking=no -o ConnectTimeout=30 ${{ secrets.VM_USER }}@$VM_IP '
             cd /opt/helpdesk-ticketing-system
             
             echo "=== CONTAINER STATUS ==="
@@ -180,7 +180,7 @@ jobs:
           echo "🔗 Testing API accessibility at: http://$VM_IP:3001"
           curl -f -m 10 http://$VM_IP:3000/health && echo "✅ Frontend externally accessible" || echo "❌ Frontend not accessible"
           curl -f -m 10 http://$VM_IP:3001/health && echo "✅ Backend externally accessible" || echo "❌ Backend not accessible"
-          
+
           echo ""
           echo "🎉 IF SUCCESSFUL, ACCESS YOUR WEBSITE AT:"
           echo "   Frontend: http://$VM_IP:3000"
