@@ -90,7 +90,6 @@ private/
 credentials/
 
 # Docker sensitive files
-docker-compose.prod.yml
 docker-secrets/
 .DS_Store?
 ._*
@@ -260,7 +259,6 @@ test-*.html
 
 # Production deployment files (temporary)
 .env.production
-docker-compose.prod.yml
 deploy-production.sh
 deploy-to-gcp.bat
 temp_deploy/
