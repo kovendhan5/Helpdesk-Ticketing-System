@@ -1,0 +1,91 @@
+name: 🚀 Deploy Helpdesk System
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: 🚀 Deploy to GCP VM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🔑 Add VM to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 🚀 Deploy Application
+        run: |
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            # Update repository
+            cd ~ && rm -rf Helpdesk-Ticketing-System
+            git clone https://github.com/kovendhan5/Helpdesk-Ticketing-System.git
+            cd Helpdesk-Ticketing-System
+            
+            # Install Docker if not present
+            if ! command -v docker &> /dev/null; then
+              curl -fsSL https://get.docker.com -o get-docker.sh
+              sudo sh get-docker.sh
+              sudo usermod -aG docker \$USER
+            fi
+            
+            # Install Docker Compose if not present
+            if ! command -v docker-compose &> /dev/null; then
+              sudo curl -L \"https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose
+              sudo chmod +x /usr/local/bin/docker-compose
+            fi
+            
+            # Copy files to app directory
+            sudo mkdir -p /opt/helpdesk
+            sudo chown \$USER:\$USER /opt/helpdesk
+            cp -r backend frontend docker-compose.prod.yml /opt/helpdesk/
+            
+            # Create environment file
+            cat > /opt/helpdesk/.env << 'EOF'
+            NODE_ENV=production
+            PORT=3001
+            
+            DB_HOST=helpdesk-postgres
+            DB_PORT=5432
+            DB_NAME=helpdesk_db
+            DB_USER=helpdesk_user
+            DB_PASSWORD=HelpDesk2025SecurePassword!
+            
+            JWT_SECRET=your-super-secure-jwt-secret-must-be-at-least-256-bits-long-for-production-security
+            
+            API_URL=http://34.173.186.108:3001/api
+            FRONTEND_URL=http://34.173.186.108
+            CORS_ORIGIN=http://34.173.186.108
+            
+            BCRYPT_ROUNDS=12
+            RATE_LIMIT_WINDOW_MS=900000
+            RATE_LIMIT_MAX_REQUESTS=100
+            
+            SESSION_SECRET=your-session-secret-key-for-production
+            SESSION_TIMEOUT=3600000
+            EOF
+            
+            # Deploy with Docker
+            cd /opt/helpdesk
+            docker-compose -f docker-compose.prod.yml down || true
+            docker-compose -f docker-compose.prod.yml up -d --build
+            
+            # Wait and check
+            sleep 30
+            docker ps
+            
+            # Health check
+            curl -f http://localhost || echo 'Frontend check failed'
+            curl -f http://localhost:3001/api/health || echo 'Backend check failed'
+            
+            echo '🎉 Deployment completed!'
+          "

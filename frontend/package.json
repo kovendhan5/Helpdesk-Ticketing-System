@@ -14,11 +14,11 @@
     "react-scripts": "^5.0.1",
     "socket.io-client": "^4.8.1",
     "web-vitals": "^4.2.1"
-  },
-  "scripts": {
+  },  "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test --watchAll=false --testPathIgnorePatterns=[]",
+    "test:ci": "react-scripts test --watchAll=false --coverage --testPathIgnorePatterns=[]",
     "lint": "echo \"✅ Frontend linting complete\" && exit 0",
     "eject": "react-scripts eject"
   },
