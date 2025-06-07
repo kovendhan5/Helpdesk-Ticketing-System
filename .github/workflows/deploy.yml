@@ -109,22 +109,21 @@ jobs:
               echo 'Docker Compose already installed'
             fi
             
-            # Create application directory
+            # Use home directory instead of /opt/helpdesk to avoid sudo
             echo 'Setting up application directory...'
-            sudo mkdir -p /opt/helpdesk
-            sudo chown \$USER:\$USER /opt/helpdesk
+            mkdir -p ~/helpdesk-app
             
             # Copy files safely
             echo 'Copying application files...'
-            cp -r backend frontend /opt/helpdesk/
+            cp -r backend frontend ~/helpdesk-app/
             
             # Always copy the docker-compose file from repository
-            cp docker-compose.prod.yml /opt/helpdesk/
+            cp docker-compose.prod.yml ~/helpdesk-app/
             echo '✅ Files copied successfully'
             
             # Deploy with Docker Compose
             echo 'Deploying with Docker Compose...'
-            cd /opt/helpdesk
+            cd ~/helpdesk-app
             
             # Stop existing containers
             docker-compose -f docker-compose.prod.yml down || true

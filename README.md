@@ -382,3 +382,4 @@ This project is licensed under the MIT License.
 "?? Fresh SSH keys generated - testing deployment"  
 "?? Fresh SSH keys generated - testing deployment"  
 "?? Fix git repository cloning issue"  
+"?? Use home directory to avoid sudo requirements"  
