@@ -8,7 +8,7 @@ Your Helpdesk Ticketing System deployment package is ready! Follow these steps t
 
 The `temp_deploy` folder contains all necessary files configured for VM: **helpdesk-vm**
 
-## 🛠️ Deployment Steps
+## Deployment Steps
 
 ### Step 1: Transfer Files to VM
 
