@@ -1,8 +1,6 @@
-name: 🚀 Deploy Helpdesk System
+name: 🚀 Deploy Helpdesk System (DISABLED - Contains Sudo)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:

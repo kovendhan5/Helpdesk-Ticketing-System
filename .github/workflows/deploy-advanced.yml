@@ -1,10 +1,6 @@
-name: 🚀 Helpdesk CI/CD Pipeline
+name: 🚀 Helpdesk CI/CD Pipeline (DISABLED)
 
 on:
-  push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
   workflow_dispatch:
     inputs:
       environment:
