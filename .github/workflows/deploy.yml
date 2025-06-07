@@ -16,20 +16,29 @@ jobs:
 
       - name: 🔍 Validate secrets
         run: |
+          echo "🔍 Validating GitHub Secrets..."
+          
           if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
-            echo "❌ SSH_PRIVATE_KEY secret is not set"
+            echo "❌ SSH_PRIVATE_KEY secret is not set or empty"
+            echo "👉 Go to Settings → Secrets and variables → Actions"
+            echo "👉 Add SSH_PRIVATE_KEY with content from: cat ~/key (on VM)"
             exit 1
           fi
+          
           if [ -z "${{ secrets.VM_HOST }}" ]; then
-            echo "❌ VM_HOST secret is not set"
+            echo "❌ VM_HOST secret is not set or empty"
+            echo "👉 Should be: 34.173.186.108"
             exit 1
           fi
+          
           if [ -z "${{ secrets.VM_USER }}" ]; then
-            echo "❌ VM_USER secret is not set"
+            echo "❌ VM_USER secret is not set or empty"
+            echo "👉 Should be: kovendhan2535"
             exit 1
           fi
+          
           echo "✅ All required secrets are configured"
-          echo "🎯 Deploying to: ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}"
+          echo "🎯 Target server: ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}"
 
       - name: 🔧 Setup SSH
         uses: webfactory/ssh-agent@v0.9.0
@@ -42,76 +51,88 @@ jobs:
           ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
           echo "✅ Known hosts updated"
 
+      - name: 🧪 Test SSH Connection
+        run: |
+          echo "🧪 Testing SSH connection to ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}..."
+          ssh -o ConnectTimeout=30 -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            echo 'SSH connection successful!'
+            echo 'User: $(whoami)'
+            echo 'Home: $HOME'
+            echo 'Working directory: $(pwd)'
+            echo 'Docker status:'
+            docker --version || echo 'Docker not installed'
+          "
+
       - name: 🚀 Deploy Application
         run: |
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
-            set -e  # Exit on any error
+            set -e
             
-            echo '🔄 Starting deployment process...'
+            echo 'Starting deployment process...'
             
             # Clean up previous installation
             cd ~ && rm -rf Helpdesk-Ticketing-System
             
             # Clone repository
-            echo '📥 Cloning repository...'
+            echo 'Cloning repository...'
             git clone https://github.com/kovendhan5/Helpdesk-Ticketing-System.git
             cd Helpdesk-Ticketing-System
             
             # Install Docker if not present
             if ! command -v docker &> /dev/null; then
-              echo '🐳 Installing Docker...'
+              echo 'Installing Docker...'
               curl -fsSL https://get.docker.com -o get-docker.sh
               sudo sh get-docker.sh
               sudo usermod -aG docker \$USER
-              echo '✅ Docker installed'
+              echo 'Docker installed'
             else
-              echo '✅ Docker already installed'
+              echo 'Docker already installed'
             fi
             
             # Install Docker Compose if not present
             if ! command -v docker-compose &> /dev/null; then
-              echo '🐳 Installing Docker Compose...'
+              echo 'Installing Docker Compose...'
               sudo curl -L \"https://github.com/docker/compose/releases/latest/download/docker-compose-\$(uname -s)-\$(uname -m)\" -o /usr/local/bin/docker-compose
               sudo chmod +x /usr/local/bin/docker-compose
-              echo '✅ Docker Compose installed'
+              echo 'Docker Compose installed'
             else
-              echo '✅ Docker Compose already installed'
+              echo 'Docker Compose already installed'
             fi
             
             # Create application directory
-            echo '📁 Setting up application directory...'
+            echo 'Setting up application directory...'
             sudo mkdir -p /opt/helpdesk
             sudo chown \$USER:\$USER /opt/helpdesk
             cp -r backend frontend docker-compose.prod.yml /opt/helpdesk/
             
             # Create production environment file
-            echo '⚙️ Creating environment configuration...'
+            echo 'Creating environment configuration...'
             cat > /opt/helpdesk/.env << 'ENV_EOF'
-            NODE_ENV=production
-            PORT=3001
-            
-            DB_HOST=helpdesk-postgres
-            DB_PORT=5432
-            DB_NAME=helpdesk_db
-            DB_USER=helpdesk_user
-            DB_PASSWORD=HelpDesk2025SecurePassword!
-            
-            JWT_SECRET=your-super-secure-jwt-secret-must-be-at-least-256-bits-long-for-production-security-2025
-            
-            API_URL=http://34.173.186.108:3001/api
-            FRONTEND_URL=http://34.173.186.108
-            CORS_ORIGIN=http://34.173.186.108
-            
-            BCRYPT_ROUNDS=12
-            RATE_LIMIT_WINDOW_MS=900000
-            RATE_LIMIT_MAX_REQUESTS=100
-            
-            SESSION_SECRET=your-session-secret-key-for-production-2025
-            SESSION_TIMEOUT=3600000
-            ENV_EOF
+NODE_ENV=production
+PORT=3001
+
+DB_HOST=helpdesk-postgres
+DB_PORT=5432
+DB_NAME=helpdesk_db
+DB_USER=helpdesk_user
+DB_PASSWORD=HelpDesk2025SecurePassword!
+
+JWT_SECRET=your-super-secure-jwt-secret-must-be-at-least-256-bits-long-for-production-security-2025
+
+API_URL=http://34.173.186.108:3001/api
+FRONTEND_URL=http://34.173.186.108
+CORS_ORIGIN=http://34.173.186.108
+
+BCRYPT_ROUNDS=12
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX_REQUESTS=100
+
+SESSION_SECRET=your-session-secret-key-for-production-2025
+SESSION_TIMEOUT=3600000
+ENV_EOF
             
             # Deploy with Docker Compose
-            echo '🚀 Deploying with Docker Compose...'
+            echo 'Deploying with Docker Compose...'
             cd /opt/helpdesk
             
             # Stop existing containers
@@ -124,23 +145,23 @@ jobs:
             docker-compose -f docker-compose.prod.yml up -d --build --remove-orphans
             
             # Wait for services to start
-            echo '⏳ Waiting for services to start...'
+            echo 'Waiting for services to start...'
             sleep 60
             
             # Check container status
-            echo '📊 Container Status:'
+            echo 'Container Status:'
             docker ps -a
             
             # Health checks
-            echo '🏥 Running health checks...'
+            echo 'Running health checks...'
             
             # Check backend health
             for i in {1..10}; do
               if wget --spider --quiet http://localhost:3001/health; then
-                echo '✅ Backend health check passed'
+                echo 'Backend health check passed'
                 break
               else
-                echo \"⏳ Backend health check attempt \$i/10 failed, retrying...\"
+                echo \"Backend health check attempt \$i/10 failed, retrying...\"
                 sleep 10
               fi
             done
@@ -148,18 +169,18 @@ jobs:
             # Check frontend
             for i in {1..10}; do
               if wget --spider --quiet http://localhost:80/; then
-                echo '✅ Frontend health check passed'
+                echo 'Frontend health check passed'
                 break
               else
-                echo \"⏳ Frontend health check attempt \$i/10 failed, retrying...\"
+                echo \"Frontend health check attempt \$i/10 failed, retrying...\"
                 sleep 10
               fi
             done
             
             # Final status check
-            echo '📋 Final deployment status:'
+            echo 'Final deployment status:'
             docker-compose -f docker-compose.prod.yml ps
             
-            echo '🎉 Deployment completed successfully!'
-            echo '🌐 Access your application at: http://34.173.186.108'
+            echo 'Deployment completed successfully!'
+            echo 'Access your application at: http://34.173.186.108'
           "
