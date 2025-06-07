@@ -2,34 +2,40 @@
 name: "Deploy to Production (SSH Debug)"
 
 on:
-  push:
-    branches: [main]
+  workflow_dispatch: # Only manual trigger, not on push
 
 jobs:
   debug-connection:
     name: Debug SSH Connection
     runs-on: ubuntu-latest
-    
+
     steps:
+      - name: Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
       - name: Test SSH Connection
         env:
-          VM_IP: ${{ secrets.VM_IP }}
+          VM_HOST: ${{ secrets.VM_HOST }}
+          VM_USER: ${{ secrets.VM_USER }}
         run: |
-          echo "🔍 Debugging SSH connection to server..."
-          echo "Target IP: $VM_IP"
-          
+          echo "🚀 Deploying to production server..."
+          echo "🔍 Testing server connectivity..."
+          echo "Server IP: $VM_HOST"
+
           # Test if port 22 is reachable
-          echo "Testing port 22 connectivity..."
-          timeout 10 bash -c "echo >/dev/tcp/$VM_IP/22" && echo "✅ Port 22 reachable" || echo "❌ Port 22 not reachable"
-          
+          timeout 10 bash -c "echo >/dev/tcp/$VM_HOST/22" && echo "✅ Port 22 is reachable" || echo "❌ Port 22 not reachable"
+
           # Test SSH with verbose output
-          echo "Testing SSH connection with verbose output..."
-          ssh -v -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$VM_IP 'echo "SSH works!"' || echo "❌ SSH failed"
-          
-          echo ""
-          echo "🔧 If connection failed, check:"
-          echo "1. Is the VM_IP secret correct? Current value: $VM_IP"
-          echo "2. Is your server running?"
-          echo "3. Is SSH service enabled on the server?"
-          echo "4. Is the SSH_PRIVATE_KEY secret valid?"
-          echo "5. Are firewall rules allowing SSH on port 22?"
+          echo "🔐 Testing SSH connection..."
+          ssh -v -o StrictHostKeyChecking=no -o ConnectTimeout=30 $VM_USER@$VM_HOST 'echo "SSH connection successful!"' || {
+            echo "❌ SSH connection failed. Checking common issues..."
+            echo "- Verify VM_HOST secret is correct: $VM_HOST"
+            echo "- Verify SSH_PRIVATE_KEY secret contains valid private key"
+            echo "- Check if server is running and SSH service is enabled"
+            echo "- Verify firewall allows SSH on port 22"
+            exit 1
+          }
+
+          echo "✅ SSH connection successful!"
