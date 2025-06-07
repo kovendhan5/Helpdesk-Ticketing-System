@@ -379,3 +379,4 @@ This project is licensed under the MIT License.
 "?? Secrets configured - deploying now!"  
 "?? SSH key fixed - testing deployment"  
 "?? SSH key synchronized - testing authentication"  
+"?? Fresh SSH keys generated - testing deployment"  
