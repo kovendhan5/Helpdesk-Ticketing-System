@@ -70,10 +70,15 @@ jobs:
             
             echo 'Starting deployment process...'
             
-            # Clean up previous installation
-            cd ~ && rm -rf Helpdesk-Ticketing-System
+            # Clean up previous installation completely
+            cd ~
+            sudo rm -rf Helpdesk-Ticketing-System
+            sudo rm -rf .git
             
-            # Clone repository
+            # Clear any git locks
+            sudo pkill -f git || true
+            
+            # Clone repository with fresh start
             echo 'Cloning repository...'
             git clone https://github.com/kovendhan5/Helpdesk-Ticketing-System.git
             cd Helpdesk-Ticketing-System
