@@ -1,0 +1,226 @@
+name: 🩺 SSH Connection Diagnostic
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ssh-diagnostic:
+    name: 🩺 SSH Connection Diagnostic
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Step 1 - Verify GitHub Secrets
+        run: |
+          echo "🔍 STEP 1: Verifying GitHub Secrets"
+          echo "=================================="
+
+          ERRORS=0
+
+          # Check SSH_PRIVATE_KEY
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ SSH_PRIVATE_KEY is empty or not configured"
+            ERRORS=$((ERRORS + 1))
+          else
+            echo "✅ SSH_PRIVATE_KEY is configured"
+            KEY_LENGTH=$(echo '${{ secrets.SSH_PRIVATE_KEY }}' | wc -c)
+            echo "📏 Key length: $KEY_LENGTH characters"
+            
+            # Check key format
+            FIRST_LINE=$(echo '${{ secrets.SSH_PRIVATE_KEY }}' | head -1)
+            LAST_LINE=$(echo '${{ secrets.SSH_PRIVATE_KEY }}' | tail -1)
+            echo "🔑 First line: $FIRST_LINE"
+            echo "🔑 Last line: $LAST_LINE"
+            
+            if echo "$FIRST_LINE" | grep -q "BEGIN.*PRIVATE KEY"; then
+              echo "✅ SSH key starts correctly"
+            else
+              echo "❌ SSH key does not start with proper BEGIN line"
+              ERRORS=$((ERRORS + 1))
+            fi
+            
+            if echo "$LAST_LINE" | grep -q "END.*PRIVATE KEY"; then
+              echo "✅ SSH key ends correctly"
+            else
+              echo "❌ SSH key does not end with proper END line"
+              ERRORS=$((ERRORS + 1))
+            fi
+          fi
+
+          # Check VM_HOST
+          if [ -z "${{ secrets.VM_HOST }}" ]; then
+            echo "❌ VM_HOST is empty or not configured"
+            ERRORS=$((ERRORS + 1))
+          else
+            echo "✅ VM_HOST is configured: ${{ secrets.VM_HOST }}"
+          fi
+
+          # Check VM_USER
+          if [ -z "${{ secrets.VM_USER }}" ]; then
+            echo "❌ VM_USER is empty or not configured"
+            ERRORS=$((ERRORS + 1))
+          else
+            echo "✅ VM_USER is configured: ${{ secrets.VM_USER }}"
+          fi
+
+          echo ""
+          echo "🎯 SSH Target: ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}"
+          echo "📊 Configuration errors found: $ERRORS"
+
+          if [ $ERRORS -gt 0 ]; then
+            echo "❌ Please fix the configuration errors above before proceeding"
+            exit 1
+          fi
+
+      - name: 🌐 Step 2 - Test Network Connectivity
+        run: |
+          echo "🌐 STEP 2: Testing Network Connectivity"
+          echo "======================================"
+
+          HOST="${{ secrets.VM_HOST }}"
+
+          # Test DNS resolution
+          echo "🔍 Testing DNS resolution..."
+          if nslookup "$HOST" >/dev/null 2>&1; then
+            echo "✅ DNS resolution successful for $HOST"
+          else
+            echo "❌ DNS resolution failed for $HOST"
+            echo "🔍 Trying with dig..."
+            dig "$HOST" +short || echo "❌ dig also failed"
+          fi
+
+          # Test ping
+          echo "🔍 Testing ping connectivity..."
+          if ping -c 3 "$HOST" >/dev/null 2>&1; then
+            echo "✅ Ping successful to $HOST"
+          else
+            echo "⚠️ Ping failed to $HOST (may be blocked by firewall)"
+          fi
+
+          # Test SSH port
+          echo "🔍 Testing SSH port 22..."
+          if timeout 10 bash -c "echo >/dev/tcp/$HOST/22" 2>/dev/null; then
+            echo "✅ SSH port 22 is open on $HOST"
+          else
+            echo "❌ SSH port 22 is closed or unreachable on $HOST"
+            exit 1
+          fi
+
+      - name: 🔧 Step 3 - Setup SSH Environment
+        run: |
+          echo "🔧 STEP 3: Setting up SSH Environment"
+          echo "===================================="
+
+          # Create SSH directory
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          # Write SSH private key to file
+          echo '${{ secrets.SSH_PRIVATE_KEY }}' > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+          # Validate SSH key
+          echo "🔍 Validating SSH private key..."
+          if ssh-keygen -l -f ~/.ssh/id_rsa 2>/dev/null; then
+            echo "✅ SSH private key is valid"
+          else
+            echo "❌ SSH private key is invalid or corrupted"
+            echo "🔍 Key file first few lines:"
+            head -3 ~/.ssh/id_rsa
+            echo "🔍 Key file last few lines:"
+            tail -3 ~/.ssh/id_rsa
+            exit 1
+          fi
+
+          # Add host to known_hosts
+          echo "🔑 Adding host to known_hosts..."
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          echo "✅ Host added to known_hosts"
+
+      - name: 🧪 Step 4 - Test SSH Connection
+        run: |
+          echo "🧪 STEP 4: Testing SSH Connection"
+          echo "================================="
+
+          HOST="${{ secrets.VM_HOST }}"
+          USER="${{ secrets.VM_USER }}"
+
+          echo "🔍 Attempting SSH connection to $USER@$HOST..."
+          echo "📋 SSH connection details:"
+          echo "  Host: $HOST"
+          echo "  User: $USER"
+          echo "  Key: ~/.ssh/id_rsa"
+          echo ""
+
+          # Test SSH connection with detailed output
+          if ssh -v -o ConnectTimeout=30 -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa "$USER@$HOST" "echo 'SSH Connection Successful!'; whoami; pwd; date" 2>&1; then
+            echo ""
+            echo "✅ SSH connection test PASSED"
+          else
+            echo ""
+            echo "❌ SSH connection test FAILED"
+            echo ""
+            echo "🔍 Common causes of SSH failure:"
+            echo "  1. SSH private key doesn't match public key on VM"
+            echo "  2. Public key not in ~/.ssh/authorized_keys on VM"
+            echo "  3. Wrong username (should be: kovendhan2535)"
+            echo "  4. Wrong hostname/IP (should be: 34.173.186.108)"
+            echo "  5. VM SSH service not running"
+            echo "  6. Firewall blocking SSH connections"
+            exit 1
+          fi
+
+      - name: 🔍 Step 5 - VM Environment Check
+        run: |
+          echo "🔍 STEP 5: VM Environment Check"
+          echo "==============================="
+
+          HOST="${{ secrets.VM_HOST }}"
+          USER="${{ secrets.VM_USER }}"
+
+          echo "🔍 Gathering VM environment information..."
+          ssh -o ConnectTimeout=30 -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa "$USER@$HOST" "
+            echo '📋 VM Environment Information:'
+            echo '================================'
+            echo 'User: \$(whoami)'
+            echo 'Home directory: \$HOME'
+            echo 'Current directory: \$(pwd)'
+            echo 'OS info: \$(cat /etc/os-release | grep PRETTY_NAME | cut -d= -f2 | tr -d \\\")'
+            echo 'Uptime: \$(uptime)'
+            echo ''
+            echo 'Software versions:'
+            echo 'Docker: \$(docker --version 2>/dev/null || echo \"Not installed\")'
+            echo 'Docker Compose: \$(docker-compose --version 2>/dev/null || echo \"Not installed\")'
+            echo 'Git: \$(git --version 2>/dev/null || echo \"Not installed\")'
+            echo ''
+            echo 'User permissions:'
+            echo 'Groups: \$(groups)'
+            echo 'Docker access: \$(docker ps >/dev/null 2>&1 && echo \"Yes\" || echo \"No - need to add user to docker group\")'
+            echo ''
+            echo 'SSH setup:'
+            echo 'SSH directory: \$(ls -la ~/.ssh/ 2>/dev/null || echo \"No ~/.ssh directory\")'
+            echo 'Authorized keys: \$(wc -l ~/.ssh/authorized_keys 2>/dev/null || echo \"No authorized_keys file\")'
+            echo ''
+            echo 'System resources:'
+            echo 'Disk space: \$(df -h / | tail -1 | awk \"{print \\\"Used: \\\" \\\$3 \\\"/\\\" \\\$2 \\\" (\\\" \\\$5 \\\")\\\"}\")' 
+            echo 'Memory: \$(free -h | grep Mem | awk \"{print \\\"Used: \\\" \\\$3 \\\"/\\\" \\\$2}\")'
+          "
+
+      - name: 📊 Step 6 - Diagnosis Summary
+        if: always()
+        run: |
+          echo "📊 SSH CONNECTION DIAGNOSIS COMPLETE"
+          echo "===================================="
+          echo "🎯 Target: ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}"
+          echo "📅 Test time: $(date)"
+          echo ""
+          echo "✅ If all steps above passed, your SSH connection is working correctly!"
+          echo ""
+          echo "❌ If any steps failed:"
+          echo "  • Fix the specific issues mentioned in the error messages"
+          echo "  • Re-run this diagnostic workflow to verify fixes"
+          echo "  • Only proceed with deployment after all tests pass"
+          echo ""
+          echo "🚀 Once SSH connection works, you can run the main deployment workflow."

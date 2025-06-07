@@ -1,0 +1,132 @@
+name: 🔍 SSH Connection Diagnostics
+
+on:
+  workflow_dispatch:
+
+jobs:
+  debug-ssh:
+    name: 🔍 Debug SSH Connection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔍 Check GitHub Secrets
+        run: |
+          echo "🔍 Checking GitHub Secrets..."
+          
+          # Check if secrets exist (without revealing values)
+          if [ -n "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "✅ SSH_PRIVATE_KEY is set (length: ${#PRIVATE_KEY} chars)"
+            echo "🔑 Key starts with: $(echo '${{ secrets.SSH_PRIVATE_KEY }}' | head -c 30)..."
+            echo "🔑 Key ends with: ...$(echo '${{ secrets.SSH_PRIVATE_KEY }}' | tail -c 30)"
+          else
+            echo "❌ SSH_PRIVATE_KEY is empty or not set"
+          fi
+          
+          if [ -n "${{ secrets.VM_HOST }}" ]; then
+            echo "✅ VM_HOST is set: ${{ secrets.VM_HOST }}"
+          else
+            echo "❌ VM_HOST is empty or not set"
+          fi
+          
+          if [ -n "${{ secrets.VM_USER }}" ]; then
+            echo "✅ VM_USER is set: ${{ secrets.VM_USER }}"
+          else
+            echo "❌ VM_USER is empty or not set"
+          fi
+        env:
+          PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🔧 Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🔑 SSH Key Validation
+        run: |
+          echo "🔍 Validating SSH key format..."
+          
+          # Check if SSH agent is running
+          ssh-add -l && echo "✅ SSH agent has keys loaded" || echo "❌ SSH agent has no keys"
+          
+          # Test SSH key format
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | head -1 | grep -q "BEGIN" && echo "✅ Key starts with BEGIN" || echo "❌ Key doesn't start with BEGIN"
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" | tail -1 | grep -q "END" && echo "✅ Key ends with END" || echo "❌ Key doesn't end with END"
+
+      - name: 🌐 Network Connectivity Test
+        run: |
+          echo "🌐 Testing network connectivity to VM..."
+          
+          # Test if host is reachable
+          ping -c 3 ${{ secrets.VM_HOST }} && echo "✅ Host is reachable" || echo "❌ Host is unreachable"
+          
+          # Test SSH port
+          nc -zv ${{ secrets.VM_HOST }} 22 && echo "✅ SSH port 22 is open" || echo "❌ SSH port 22 is closed"
+
+      - name: 🔑 Add VM to known hosts
+        run: |
+          echo "🔑 Adding VM to known hosts..."
+          mkdir -p ~/.ssh
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts 2>/dev/null
+          echo "✅ Known hosts updated"
+          
+          # Show what was added
+          echo "📋 Known hosts entries for VM:"
+          grep "${{ secrets.VM_HOST }}" ~/.ssh/known_hosts || echo "❌ No entry found"
+
+      - name: 🧪 SSH Connection Test (Verbose)
+        run: |
+          echo "🧪 Testing SSH connection with verbose output..."
+          
+          # Try connecting with verbose SSH
+          ssh -vvv -o ConnectTimeout=10 -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "echo 'SSH connection successful!' && whoami && pwd" || {
+            echo "❌ SSH connection failed"
+            echo "🔍 Possible causes:"
+            echo "  1. Wrong SSH private key"
+            echo "  2. Key not added to VM's authorized_keys"
+            echo "  3. Wrong username or hostname"
+            echo "  4. VM firewall blocking SSH"
+            echo "  5. VM is down or unreachable"
+            exit 1
+          }
+
+      - name: 🔍 VM Environment Check
+        if: success()
+        run: |
+          echo "🔍 Checking VM environment..."
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            echo '📋 VM Information:'
+            echo 'User: \$(whoami)'
+            echo 'Home: \$HOME'
+            echo 'Working directory: \$(pwd)'
+            echo 'OS: \$(cat /etc/os-release | grep PRETTY_NAME)'
+            echo 'Docker: \$(docker --version 2>/dev/null || echo 'Not installed')'
+            echo 'Docker Compose: \$(docker-compose --version 2>/dev/null || echo 'Not installed')'
+            echo 'Git: \$(git --version 2>/dev/null || echo 'Not installed')'
+            echo 'User groups: \$(groups)'
+            echo 'SSH authorized keys:'
+            ls -la ~/.ssh/authorized_keys 2>/dev/null || echo 'No authorized_keys file'
+            echo 'Disk space:'
+            df -h / | head -2
+            echo 'Memory:'
+            free -h | head -2
+          "
+
+      - name: 📊 Diagnosis Summary
+        if: always()
+        run: |
+          echo "📊 SSH Connection Diagnosis Summary"
+          echo "=================================="
+          echo "🎯 Target: ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}"
+          echo "📅 Time: $(date)"
+          echo ""
+          echo "🔍 Check the logs above for:"
+          echo "  ✅ All secrets are properly configured"
+          echo "  ✅ SSH key format is correct"
+          echo "  ✅ Network connectivity works"
+          echo "  ✅ SSH connection succeeds"
+          echo "  ✅ VM environment is ready"
+          echo ""
+          echo "If any steps failed, fix those issues before running deployment."
