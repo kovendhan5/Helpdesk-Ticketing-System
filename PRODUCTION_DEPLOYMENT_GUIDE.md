@@ -35,7 +35,7 @@ This option manually configures the VM with all dependencies.
 SSH into your GCP VM:
 
 ```bash
-ssh username@YOUR_VM_EXTERNAL_IP
+ssh kovendhan2535@helpdesk-vm
 ```
 
 ### Step 2: Install Docker and Docker Compose
@@ -61,7 +61,7 @@ exit
 
 ```bash
 # SSH back into your VM
-ssh username@YOUR_VM_EXTERNAL_IP
+ssh kovendhan2535@helpdesk-vm
 
 # Clone your repository
 git clone https://github.com/yourusername/helpdesk-ticketing-system.git
@@ -80,9 +80,9 @@ nano .env.production
 DB_HOST=localhost  # Use localhost for containerized PostgreSQL
 DB_PASSWORD=your_secure_password_here
 JWT_SECRET=your_super_secure_jwt_secret_256_bits_long
-API_URL=http://YOUR_VM_EXTERNAL_IP:3001/api
-FRONTEND_URL=http://YOUR_VM_EXTERNAL_IP
-CORS_ORIGIN=http://YOUR_VM_EXTERNAL_IP
+API_URL=http://helpdesk-vm:3001/api
+FRONTEND_URL=http://helpdesk-vm
+CORS_ORIGIN=http://helpdesk-vm
 ```
 
 ### Step 4: Start the Application
@@ -110,8 +110,8 @@ gcloud compute firewall-rules create helpdesk-http \
 
 ### Step 6: Access Your Application
 
-- **Frontend**: `http://YOUR_VM_EXTERNAL_IP`
-- **API**: `http://YOUR_VM_EXTERNAL_IP:3001/api`
+- **Frontend**: `http://helpdesk-vm`
+- **API**: `http://helpdesk-vm:3001/api`
 
 ---
 
@@ -171,10 +171,10 @@ ssh ubuntu@$VM_IP
 
 ```bash
 # Copy the deployment script to your VM
-scp deploy-production.sh username@YOUR_VM_EXTERNAL_IP:~/
+scp deploy-production.sh kovendhan2535@helpdesk-vm:~/
 
 # SSH into your VM
-ssh username@YOUR_VM_EXTERNAL_IP
+ssh kovendhan2535@helpdesk-vm
 
 # Make the script executable and run it
 chmod +x deploy-production.sh
@@ -252,8 +252,8 @@ sudo ufw enable
 
 ```bash
 # Check application health
-curl http://YOUR_VM_IP/health
-curl http://YOUR_VM_IP:3001/api/health
+curl http://helpdesk-vm/health
+curl http://helpdesk-vm:3001/api/health
 
 # Check Docker containers
 docker-compose -f docker-compose.prod.yml ps
