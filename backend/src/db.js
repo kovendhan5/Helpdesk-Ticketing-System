@@ -5,14 +5,27 @@ dotenv.config();
 
 const { Pool } = pkg;
 
+// Security check: Ensure critical environment variables are set
+if (!process.env.DB_PASSWORD) {
+  console.error('❌ SECURITY ERROR: DB_PASSWORD environment variable is required');
+  console.error('   Create a .env file with DB_PASSWORD=your_secure_password');
+  process.exit(1);
+}
+
+if (!process.env.JWT_SECRET) {
+  console.error('❌ SECURITY ERROR: JWT_SECRET environment variable is required');
+  console.error('   Generate one with: openssl rand -hex 64');
+  process.exit(1);
+}
+
 // Database connection configuration
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   port: parseInt(process.env.DB_PORT) || 5432,
   database: process.env.DB_NAME || 'helpdesk_db',
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'helpdesk_local_password_2024',
-  ssl: false, // Explicitly disable SSL for local development
+  password: process.env.DB_PASSWORD, // No fallback for security - must be set in environment
+  ssl: process.env.NODE_ENV === 'production' ? true : false,
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 2000,

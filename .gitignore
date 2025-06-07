@@ -166,3 +166,64 @@ terraform/*.bat
 
 # Status and summary files
 REPOSITORY-STATUS.md
+
+# SECURITY ENHANCEMENT: Additional patterns to prevent sensitive data exposure
+# Test files with potential credentials
+*test*login*.json
+*test*credential*.json
+*test*email*.bat
+*test*email*.ps1
+*test*websocket*.js
+*test*websocket*.html
+admin-login.json
+token.json
+token-*.json
+*-token.json
+*-credentials.json
+
+# Temporary files that might contain sensitive data
+*.tmp
+*.temp
+*temp*
+token.txt
+token-response.json
+credential-*.txt
+password-*.txt
+secret-*.txt
+
+# Common backup and swap files
+*~
+*.swp
+*.swo
+*.orig
+*.DS_Store
+Thumbs.db
+
+# Docker secrets and sensitive configs
+docker-compose.override.yml
+secrets/
+.secrets/
+.credentials/
+
+# Browser and debugging files
+.vscode/settings.json
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Production config files that might contain secrets
+production.json
+production.config.js
+staging.json
+staging.config.js
+
+# Email testing and temporary files
+email-test.*
+smtp-test.*
+*-test-email.*
+ethereal-*.json
+mailgun-*.json
+sendgrid-*.json
