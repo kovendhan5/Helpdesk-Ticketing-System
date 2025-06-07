@@ -103,7 +103,95 @@ jobs:
             echo 'Setting up application directory...'
             sudo mkdir -p /opt/helpdesk
             sudo chown \$USER:\$USER /opt/helpdesk
-            cp -r backend frontend docker-compose.prod.yml /opt/helpdesk/
+            
+            # Copy application files
+            echo 'Copying application files...'
+            cp -r backend frontend /opt/helpdesk/
+            
+            # Copy docker-compose file (check if exists)
+            if [ -f docker-compose.prod.yml ]; then
+                cp docker-compose.prod.yml /opt/helpdesk/
+                echo '✅ docker-compose.prod.yml copied'
+            else
+                echo '❌ docker-compose.prod.yml not found, creating it...'
+                # Create docker-compose.prod.yml if missing
+                cat > /opt/helpdesk/docker-compose.prod.yml << 'COMPOSE_EOF'
+version: '3.8'
+
+services:
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: helpdesk-frontend-prod
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: helpdesk-backend-prod
+    ports:
+      - "3001:3001"
+    depends_on:
+      - postgres
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=helpdesk_db
+      - DB_USER=helpdesk_user
+      - DB_PASSWORD=HelpDesk2025SecurePassword!
+      - JWT_SECRET=your-super-secure-jwt-secret-must-be-at-least-256-bits-long-for-production-security-2025
+      - API_URL=http://34.173.186.108:3001/api
+      - FRONTEND_URL=http://34.173.186.108
+      - CORS_ORIGIN=http://34.173.186.108
+      - BCRYPT_ROUNDS=12
+      - RATE_LIMIT_WINDOW_MS=900000
+      - RATE_LIMIT_MAX_REQUESTS=100
+      - SESSION_SECRET=your-session-secret-key-for-production-2025
+      - SESSION_TIMEOUT=3600000
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  postgres:
+    image: postgres:15
+    container_name: helpdesk-postgres-prod
+    environment:
+      - POSTGRES_DB=helpdesk_db
+      - POSTGRES_USER=helpdesk_user
+      - POSTGRES_PASSWORD=HelpDesk2025SecurePassword!
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helpdesk_user -d helpdesk_db"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  postgres_data:
+COMPOSE_EOF
+                echo '✅ docker-compose.prod.yml created'
+            fi
             
             # Create production environment file
             echo 'Creating environment configuration...'
