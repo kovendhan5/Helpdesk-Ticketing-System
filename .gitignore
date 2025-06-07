@@ -257,3 +257,15 @@ test-*.html
 .history/
 .idea/
 *.code-workspace
+
+# Production deployment files (temporary)
+.env.production
+docker-compose.prod.yml
+deploy-production.sh
+deploy-to-gcp.bat
+temp_deploy/
+deploy-commands.bat
+
+# Production environment files
+.env.prod
+.env.staging

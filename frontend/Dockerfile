@@ -1,21 +1,33 @@
 # Frontend Dockerfile for Helpdesk Ticketing System
-FROM node:20-alpine AS build
+# Multi-stage build for production optimization
+FROM node:20-alpine AS base
 
 # Set working directory
 WORKDIR /app
 
-# Set environment variables for faster builds
+# Development stage
+FROM base AS development
+COPY package*.json ./
+RUN npm ci
+COPY . .
+EXPOSE 3000
+CMD ["npm", "start"]
+
+# Build stage
+FROM base AS build
+
+# Set build environment variables
 ENV NODE_ENV=production
 ENV GENERATE_SOURCEMAP=false
 ENV CI=true
+ENV PUBLIC_URL=/
 
 # Copy package files first for better caching
 COPY package*.json ./
 
-# Install dependencies using npm ci for faster, reliable builds
-RUN npm ci --only=production --no-audit --no-fund && \
-    npm install --no-save react-scripts && \
-    npm cache clean --force
+# Install dependencies including devDependencies for build
+RUN npm ci --no-audit --no-fund && \
+  npm cache clean --force
 
 # Copy source code and config files
 COPY src/ ./src/
@@ -24,10 +36,15 @@ COPY tailwind.config.js ./
 COPY postcss.config.js ./
 
 # Build the application with optimizations
-RUN npm run build
+RUN npm run build && \
+  # Remove unnecessary files from build
+  find ./build -name "*.map" -delete
 
 # Production stage with nginx
-FROM nginx:alpine
+FROM nginx:alpine AS production
+
+# Install curl for health checks
+RUN apk add --no-cache curl
 
 # Copy built application
 COPY --from=build /app/build /usr/share/nginx/html
@@ -36,21 +53,25 @@ COPY --from=build /app/build /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf
 COPY nginx-main.conf /etc/nginx/nginx.conf
 
-# Set ownership for nginx files and create writable temp directory
+# Create health check endpoint
+RUN echo '<!DOCTYPE html><html><body><h1>OK</h1></body></html>' > /usr/share/nginx/html/health
+
+# Set proper permissions
 RUN chown -R nginx:nginx /usr/share/nginx/html && \
-    mkdir -p /tmp/nginx && \
-    chmod 777 /tmp/nginx && \
-    mkdir -p /var/log/nginx && \
-    chmod 755 /var/log/nginx && \
-    touch /tmp/nginx/nginx.pid && \
-    chmod 666 /tmp/nginx/nginx.pid
+  chmod -R 755 /usr/share/nginx/html && \
+  mkdir -p /tmp/nginx /var/cache/nginx && \
+  chown -R nginx:nginx /tmp/nginx /var/cache/nginx && \
+  chmod 755 /var/log/nginx
+
+# Create non-root user for security
+USER nginx
 
 # Expose port
-EXPOSE 3000
+EXPOSE 80
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://127.0.0.1:3000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:80/health || exit 1
 
-# Start nginx with explicit configuration
+# Start nginx
 CMD ["nginx", "-c", "/etc/nginx/nginx.conf", "-g", "daemon off;"]

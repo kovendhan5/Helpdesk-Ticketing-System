@@ -1,27 +1,41 @@
 # Backend Dockerfile for Helpdesk Ticketing System
-FROM node:20-alpine
+# Multi-stage build for production optimization
+FROM node:20-alpine AS base
 
-# Set working directory
+# Install common dependencies
+RUN apk add --no-cache \
+  wget \
+  curl \
+  && addgroup -g 1001 -S nodejs \
+  && adduser -S nodejs -u 1001
+
 WORKDIR /app
 
-# Install wget for health checks and create non-root user for security
-RUN apk add --no-cache wget && \
-    addgroup -g 1001 -S nodejs && \
-    adduser -S nodejs -u 1001
-
-# Copy package files
+# Development stage
+FROM base AS development
 COPY package*.json ./
+RUN npm ci
+COPY . .
+USER nodejs
+EXPOSE 3001
+CMD ["npm", "run", "dev"]
 
-# Install dependencies
+# Production dependencies stage
+FROM base AS deps
+COPY package*.json ./
 RUN npm ci --only=production && \
-    npm cache clean --force
+  npm cache clean --force
 
-# Copy source code
-COPY src/ ./src/
-COPY setup-db.js setup-db-secure.js ./
+# Production stage
+FROM base AS production
+WORKDIR /app
 
-# Set ownership
-RUN chown -R nodejs:nodejs /app
+# Copy production dependencies
+COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
+
+# Copy source code (exclude development files)
+COPY --chown=nodejs:nodejs src/ ./src/
+COPY --chown=nodejs:nodejs package*.json ./
 
 # Create logs directory
 RUN mkdir -p /app/logs && chown nodejs:nodejs /app/logs
@@ -33,8 +47,9 @@ USER nodejs
 EXPOSE 3001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:3001/health || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:3001/health || exit 1
 
-# Start the application
-CMD ["node", "src/index.js"]
+# Start the application with PM2 for production
+RUN npm install -g pm2
+CMD ["pm2-runtime", "start", "src/index.js", "--name", "helpdesk-backend"]
