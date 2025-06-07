@@ -40,16 +40,14 @@ COPY --chown=nodejs:nodejs package*.json ./
 # Create logs directory
 RUN mkdir -p /app/logs && chown nodejs:nodejs /app/logs
 
+# Install wget for health checks
+RUN apk add --no-cache wget
+
 # Switch to non-root user
 USER nodejs
 
 # Expose port
 EXPOSE 3001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=30s --retries=3 \
-  CMD curl -f http://localhost:3001/health || exit 1
-
-# Start the application with PM2 for production
-RUN npm install -g pm2
-CMD ["pm2-runtime", "start", "src/index.js", "--name", "helpdesk-backend"]
+# Start the application
+CMD ["node", "src/index.js"]
