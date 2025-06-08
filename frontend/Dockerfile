@@ -26,7 +26,12 @@ ENV PUBLIC_URL=/
 COPY package*.json ./
 
 # Install dependencies including devDependencies for build
-RUN npm ci --no-audit --no-fund && \
+# Add npm configuration for better network handling
+RUN npm config set fetch-retry-mintimeout 20000 && \
+  npm config set fetch-retry-maxtimeout 120000 && \
+  npm config set fetch-retries 5 && \
+  npm config set registry https://registry.npmjs.org/ && \
+  npm ci --no-audit --no-fund && \
   npm cache clean --force
 
 # Copy source code and config files

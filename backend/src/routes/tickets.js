@@ -9,9 +9,15 @@ import emailService from '../services/emailService.js';
 const router = express.Router();
 
 // Create uploads directory if it doesn't exist
-const uploadsDir = 'uploads';
+const uploadsDir = path.join(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+  try {
+    fs.mkdirSync(uploadsDir, { recursive: true, mode: 0o755 });
+    console.log('✅ Uploads directory created:', uploadsDir);
+  } catch (error) {
+    console.error('❌ Failed to create uploads directory:', error);
+    // Directory already exists in Docker, this is expected
+  }
 }
 
 // Configure multer for file uploads
