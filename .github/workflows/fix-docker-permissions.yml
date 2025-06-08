@@ -1,0 +1,74 @@
+name: 🔧 Fix Docker Permissions
+
+on:
+  workflow_dispatch:
+
+jobs:
+  fix-docker:
+    name: 🔧 Fix Docker Permissions on VM
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🔑 Add VM to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 🔍 Check Current Docker Status
+        run: |
+          echo "🔍 Checking current Docker status..."
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            echo 'Current user: \$(whoami)'
+            echo 'Current groups: \$(groups)'
+            echo 'Docker version: \$(docker --version)'
+            echo 'Testing Docker access:'
+            docker ps 2>&1 || echo 'Docker permission denied (expected)'
+          "
+
+      - name: 🔧 Add User to Docker Group
+        run: |
+          echo "🔧 Adding user to docker group..."
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            echo 'Adding user to docker group...'
+            sudo usermod -aG docker \$(whoami)
+            echo '✅ User added to docker group'
+            echo 'New groups (will be active after re-login):'
+            sudo groups \$(whoami)
+          "
+
+      - name: 🔄 Test Docker Access (New Session)
+        run: |
+          echo "🔄 Testing Docker access in new SSH session..."
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            echo 'Testing Docker in new session:'
+            echo 'Current groups: \$(groups)'
+            if groups \$(whoami) | grep -q docker; then
+              echo '✅ User is now in docker group'
+              echo 'Testing Docker command:'
+              docker ps && echo '✅ Docker access working!' || echo '❌ Docker still not accessible'
+            else
+              echo '⚠️ Docker group not yet active - may need system restart'
+            fi
+          "
+
+      - name: 🎉 Summary
+        run: |
+          echo "🎉 Docker Permission Fix Summary"
+          echo "==============================="
+          echo "✅ User has been added to docker group"
+          echo ""
+          echo "🔍 If Docker access still shows permission denied:"
+          echo "  1. The VM may need a restart for group changes to take effect"
+          echo "  2. Or wait a few minutes and try again"
+          echo ""
+          echo "🚀 Next steps:"
+          echo "  1. Wait 2-3 minutes"
+          echo "  2. Run the 'Robust Deployment' workflow"
+          echo "  3. If still fails, restart the VM and try again"
