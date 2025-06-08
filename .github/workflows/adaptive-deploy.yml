@@ -1,0 +1,89 @@
+name: Adaptive Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+
+    steps:
+      - name: Adaptive Deploy
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 350s
+          script: |
+            echo "=== ADAPTIVE DEPLOYMENT ==="
+
+            # Go to app directory
+            cd /home/kovendhan2535/helpdesk || {
+              echo "Creating helpdesk directory..."
+              mkdir -p /home/kovendhan2535/helpdesk
+              cd /home/kovendhan2535/helpdesk
+            }
+
+            # Update code
+            echo "Updating code..."
+            if [ -d ".git" ]; then
+              git pull origin main
+            else
+              git clone --depth 1 https://github.com/kovendhan5/Helpdesk-Ticketing-System.git .
+            fi
+
+            # Find and use the best available docker-compose file
+            echo "Finding docker-compose file..."
+            COMPOSE_FILE=""
+            if [ -f "docker-compose.simple.yml" ]; then
+              COMPOSE_FILE="docker-compose.simple.yml"
+              echo "Using docker-compose.simple.yml"
+            elif [ -f "docker-compose.yml" ]; then
+              COMPOSE_FILE="docker-compose.yml"
+              echo "Using docker-compose.yml"
+            elif [ -f "docker-compose.prod.yml" ]; then
+              COMPOSE_FILE="docker-compose.prod.yml"
+              echo "Using docker-compose.prod.yml"
+            else
+              echo "ERROR: No docker-compose file found!"
+              echo "Available files:"
+              ls -la
+              exit 1
+            fi
+
+            # Stop existing containers
+            echo "Stopping existing containers..."
+            docker-compose -f $COMPOSE_FILE down 2>/dev/null || true
+
+            # Clean up orphaned containers
+            docker container prune -f 2>/dev/null || true
+
+            # Start services
+            echo "Starting services with $COMPOSE_FILE..."
+            docker-compose -f $COMPOSE_FILE up -d --force-recreate
+
+            # Show status
+            echo "=== DEPLOYMENT STATUS ==="
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+            # Wait and show logs
+            echo "=== WAITING FOR SERVICES ==="
+            sleep 20
+
+            echo "=== SERVICE LOGS ==="
+            docker-compose -f $COMPOSE_FILE logs --tail=15
+
+            # Health checks
+            echo "=== HEALTH CHECKS ==="
+            sleep 5
+            curl -f http://localhost:3001/health || echo "Backend health check failed"
+            curl -f http://localhost || echo "Frontend health check failed"
+
+            echo "=== DEPLOYMENT COMPLETE ==="
+            echo "Compose file used: $COMPOSE_FILE"
+            echo "Frontend: http://34.173.186.108"
+            echo "Backend: http://34.173.186.108:3001"

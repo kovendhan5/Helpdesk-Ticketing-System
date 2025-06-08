@@ -9,75 +9,92 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 7
-    
+
     steps:
-    - name: Deploy Without Sudo
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.VM_HOST }}
-        username: ${{ secrets.VM_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        timeout: 400s
-        script: |
-          echo "=== NO-SUDO DEPLOYMENT START ==="
-          
-          # First, try to add user to docker group (this might need sudo once)
-          echo "Checking docker group membership..."
-          groups | grep docker || echo "User not in docker group - will attempt to add"
-          
-          # If not in docker group, try to add (this is the only sudo we might need)
-          if ! groups | grep -q docker; then
-            echo "Attempting to add user to docker group..."
-            sudo usermod -aG docker $USER 2>/dev/null || echo "Could not add to docker group - continuing anyway"
-            # Refresh group membership
-            exec sg docker newgrp $(id -gn)
-          fi
-          
-          # Force stop and clean containers WITHOUT sudo
-          echo "Cleaning up containers..."
-          docker kill $(docker ps -q) 2>/dev/null || true
-          docker rm $(docker ps -aq) 2>/dev/null || true
-          docker system prune -af 2>/dev/null || true
-          
-          # Prepare directory
-          echo "Preparing application directory..."
-          cd /home/kovendhan2535
-          rm -rf helpdesk 2>/dev/null || true
-          mkdir -p helpdesk
-          cd helpdesk
-          
-          # Clone repository
-          echo "Cloning repository..."
-          git clone --depth 1 https://github.com/kovendhan5/Helpdesk-Ticketing-System.git . || {
-            echo "Git clone failed, trying to continue with existing files..."
-            git pull origin main 2>/dev/null || true
-          }
-          
-          # Check if docker-compose.simple.yml exists
-          if [ ! -f "docker-compose.simple.yml" ]; then
-            echo "ERROR: docker-compose.simple.yml not found!"
+      - name: Deploy Without Sudo
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 400s
+          script: |
+            echo "=== NO-SUDO DEPLOYMENT START ==="
+
+            # First, try to add user to docker group (this might need sudo once)
+            echo "Checking docker group membership..."
+            groups | grep docker || echo "User not in docker group - will attempt to add"
+
+            # If not in docker group, try to add (this is the only sudo we might need)
+            if ! groups | grep -q docker; then
+              echo "Attempting to add user to docker group..."
+              sudo usermod -aG docker $USER 2>/dev/null || echo "Could not add to docker group - continuing anyway"
+              # Refresh group membership
+              exec sg docker newgrp $(id -gn)
+            fi
+
+            # Force stop and clean containers WITHOUT sudo
+            echo "Cleaning up containers..."
+            docker kill $(docker ps -q) 2>/dev/null || true
+            docker rm $(docker ps -aq) 2>/dev/null || true
+            docker system prune -af 2>/dev/null || true
+
+            # Prepare directory
+            echo "Preparing application directory..."
+            cd /home/kovendhan2535
+            rm -rf helpdesk 2>/dev/null || true
+            mkdir -p helpdesk
+            cd helpdesk
+
+            # Clone repository
+            echo "Cloning repository..."
+            git clone --depth 1 https://github.com/kovendhan5/Helpdesk-Ticketing-System.git . || {
+              echo "Git clone failed, trying to continue with existing files..."
+              git pull origin main 2>/dev/null || true
+            }
+
+            # Debug: Show what files were cloned
+            echo "Files in directory after clone:"
             ls -la
-            exit 1
-          fi
-          
-          # Start services WITHOUT sudo
-          echo "Starting services..."
-          docker-compose -f docker-compose.simple.yml down 2>/dev/null || true
-          docker-compose -f docker-compose.simple.yml up -d --force-recreate --remove-orphans
-          
-          echo "=== DEPLOYMENT STATUS ==="
-          docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
-          
-          echo "=== WAITING FOR SERVICES ==="
-          sleep 15
-          
-          echo "=== SERVICE LOGS ==="
-          docker-compose -f docker-compose.simple.yml logs --tail=20
-          
-          echo "=== HEALTH CHECK ==="
-          curl -f http://localhost:3001/health || echo "Backend health check failed"
-          curl -f http://localhost || echo "Frontend health check failed"
-          
-          echo "=== DEPLOYMENT COMPLETE ==="
-          echo "Frontend: http://34.173.186.108"
-          echo "Backend: http://34.173.186.108:3001"
+
+            # Debug: Show git status
+            echo "Git status:"
+            git status
+
+            # Check if docker-compose.simple.yml exists
+            if [ ! -f "docker-compose.simple.yml" ]; then
+              echo "ERROR: docker-compose.simple.yml not found!"
+              echo "Looking for docker-compose files:"
+              find . -name "*docker-compose*" -type f
+              echo "Trying to use alternative compose file if available..."
+              if [ -f "docker-compose.yml" ]; then
+                echo "Using docker-compose.yml instead..."
+                cp docker-compose.yml docker-compose.simple.yml
+              else
+                echo "No docker-compose files found! Listing all files:"
+                find . -name "*.yml" -o -name "*.yaml"
+                exit 1
+              fi
+            fi
+
+            # Start services WITHOUT sudo
+            echo "Starting services..."
+            docker-compose -f docker-compose.simple.yml down 2>/dev/null || true
+            docker-compose -f docker-compose.simple.yml up -d --force-recreate --remove-orphans
+
+            echo "=== DEPLOYMENT STATUS ==="
+            docker ps --format "table {{.Names}}\t{{.Status}}\t{{.Ports}}"
+
+            echo "=== WAITING FOR SERVICES ==="
+            sleep 15
+
+            echo "=== SERVICE LOGS ==="
+            docker-compose -f docker-compose.simple.yml logs --tail=20
+
+            echo "=== HEALTH CHECK ==="
+            curl -f http://localhost:3001/health || echo "Backend health check failed"
+            curl -f http://localhost || echo "Frontend health check failed"
+
+            echo "=== DEPLOYMENT COMPLETE ==="
+            echo "Frontend: http://34.173.186.108"
+            echo "Backend: http://34.173.186.108:3001"
