@@ -76,19 +76,18 @@ jobs:
       - name: 📤 Upload Application Files
         run: |
           echo "📤 Uploading application files..."
-          
-          # Create deployment archive
+
+          # Create deployment archive with all required files
           tar -czf helpdesk-deploy.tar.gz \
             backend/ \
             frontend/ \
             docker-compose.prod.yml \
             .env.production \
-            deploy-production.sh \
-            package*.json || true
-          
+            deploy-production.sh
+
           # Upload to VM
           scp helpdesk-deploy.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:$DEPLOY_DIR/
-          
+
           # Extract on VM
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
             cd $DEPLOY_DIR
@@ -150,7 +149,7 @@ jobs:
             echo 'Container health:'
             docker-compose -f docker-compose.prod.yml logs --tail=10 backend
             docker-compose -f docker-compose.prod.yml logs --tail=10 frontend
-            docker-compose -f docker-compose.prod.yml logs --tail=10 db
+            docker-compose -f docker-compose.prod.yml logs --tail=10 helpdesk-postgres-prod
           "
 
       - name: 🌐 Test Endpoints
@@ -177,7 +176,7 @@ jobs:
             fi
             
             # Test database
-            if docker-compose -f $DEPLOY_DIR/docker-compose.prod.yml exec -T db pg_isready -U helpdesk_user; then
+            if docker-compose -f $DEPLOY_DIR/docker-compose.prod.yml exec -T helpdesk-postgres-prod pg_isready -U helpdesk_user; then
               echo '✅ Database ready'
             else
               echo '⚠️ Database not ready yet'

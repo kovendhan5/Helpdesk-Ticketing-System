@@ -45,12 +45,12 @@ services:
     restart: unless-stopped
     environment:
       - NODE_ENV=production
-      - DB_HOST=helpdesk-postgres
+      - DB_HOST=helpdesk-postgres-prod
       - DB_PORT=5432
       - DB_NAME=${DB_NAME:-helpdesk_db}
       - DB_USER=${DB_USER:-helpdesk_user}
-      - DB_PASSWORD=${DB_PASSWORD}
-      - JWT_SECRET=${JWT_SECRET}
+      - DB_PASSWORD=${DB_PASSWORD:-HelpDesk2025SecurePassword!}
+      - JWT_SECRET=${JWT_SECRET:-your-super-secure-jwt-secret-must-be-at-least-256-bits-long-for-production-security}
       - PORT=3001
       - CORS_ORIGIN=${CORS_ORIGIN:-http://34.173.186.108}
       - API_URL=${API_URL:-http://34.173.186.108:3001/api}
@@ -74,17 +74,17 @@ services:
       retries: 3
       start_period: 40s
     depends_on:
-      postgres:
+      helpdesk-postgres-prod:
         condition: service_healthy
 
-  postgres:
+  helpdesk-postgres-prod:
     image: postgres:16-alpine
     container_name: helpdesk-postgres-prod
     restart: unless-stopped
     environment:
       - POSTGRES_DB=${DB_NAME:-helpdesk_db}
       - POSTGRES_USER=${DB_USER:-helpdesk_user}
-      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-HelpDesk2025SecurePassword!}
       - POSTGRES_INITDB_ARGS=--auth-host=md5
     ports:
       - "5432:5432"
