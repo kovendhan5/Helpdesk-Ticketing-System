@@ -1,8 +1,6 @@
-name: No-Sudo Deploy
+name: No-Sudo Deploy (DISABLED - Conflicts)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -28,7 +26,7 @@ jobs:
             # If not in docker group, try to add (this is the only sudo we might need)
             if ! groups | grep -q docker; then
               echo "Attempting to add user to docker group..."
-              sudo usermod -aG docker $USER 2>/dev/null || echo "Could not add to docker group - continuing anyway"
+              usermod -aG docker $USER 2>/dev/null || echo "Could not add to docker group - continuing anyway"
               # Refresh group membership
               exec sg docker newgrp $(id -gn)
             fi
