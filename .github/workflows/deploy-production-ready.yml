@@ -77,13 +77,16 @@ jobs:
         run: |
           echo "📤 Uploading application files..."
 
-          # Create deployment archive with all required files
+          # Verify files exist before creating archive
+          ls -la .env.production || echo "Warning: .env.production not found"
+          ls -la deploy-production.sh || echo "Warning: deploy-production.sh not found"
+          ls -la docker-compose.prod.yml || echo "Warning: docker-compose.prod.yml not found"
+
+          # Create deployment archive with existing files only
           tar -czf helpdesk-deploy.tar.gz \
             backend/ \
             frontend/ \
-            docker-compose.prod.yml \
-            .env.production \
-            deploy-production.sh
+            docker-compose.prod.yml
 
           # Upload to VM
           scp helpdesk-deploy.tar.gz ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}:$DEPLOY_DIR/
@@ -99,10 +102,29 @@ jobs:
 
       - name: 🔧 Set Permissions
         run: |
-          echo "🔧 Setting file permissions..."
+          echo "🔧 Setting file permissions and environment..."
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
             cd $DEPLOY_DIR
             chmod +x *.sh 2>/dev/null || echo 'No shell scripts to make executable'
+            
+            # Create production environment file
+            echo 'Creating .env.production file...'
+            echo 'NODE_ENV=production' > .env.production
+            echo 'PORT=3001' >> .env.production
+            echo 'DB_HOST=helpdesk-postgres-prod' >> .env.production
+            echo 'DB_PORT=5432' >> .env.production
+            echo 'DB_NAME=helpdesk_db' >> .env.production
+            echo 'DB_USER=helpdesk_user' >> .env.production
+            echo 'DB_PASSWORD=HelpDesk2025SecurePassword!' >> .env.production
+            echo 'JWT_SECRET=your-super-secure-jwt-secret-must-be-at-least-256-bits-long-for-production-security' >> .env.production
+            echo 'API_URL=http://34.173.186.108:3001/api' >> .env.production
+            echo 'FRONTEND_URL=http://34.173.186.108' >> .env.production
+            echo 'CORS_ORIGIN=http://34.173.186.108' >> .env.production
+            echo 'BCRYPT_ROUNDS=12' >> .env.production
+            echo 'RATE_LIMIT_WINDOW_MS=900000' >> .env.production
+            echo 'RATE_LIMIT_MAX_REQUESTS=100' >> .env.production
+            
+            echo '✅ Environment file created'
             echo '✅ Permissions set'
           "
 
@@ -128,11 +150,19 @@ jobs:
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
             cd $DEPLOY_DIR
             
+            # Load environment variables
+            export \$(cat .env.production | xargs)
+            
+            echo 'Environment variables loaded:'
+            echo 'DB_PASSWORD is set:' \${DB_PASSWORD:+YES}
+            echo 'JWT_SECRET is set:' \${JWT_SECRET:+YES}
+            
             echo 'Starting containers...'
-            docker-compose -f docker-compose.prod.yml up -d
+            docker-compose -f docker-compose.prod.yml --env-file .env.production down --remove-orphans || true
+            docker-compose -f docker-compose.prod.yml --env-file .env.production up -d
             
             echo 'Waiting for containers to initialize...'
-            sleep 20
+            sleep 30
             
             echo '✅ Containers started'
           "
@@ -144,22 +174,23 @@ jobs:
             cd $DEPLOY_DIR
             
             echo 'Container status:'
-            docker-compose -f docker-compose.prod.yml ps
+            docker-compose -f docker-compose.prod.yml --env-file .env.production ps
             
             echo 'Container health:'
-            docker-compose -f docker-compose.prod.yml logs --tail=10 backend
-            docker-compose -f docker-compose.prod.yml logs --tail=10 frontend
-            docker-compose -f docker-compose.prod.yml logs --tail=10 helpdesk-postgres-prod
+            docker-compose -f docker-compose.prod.yml --env-file .env.production logs --tail=10 backend
+            docker-compose -f docker-compose.prod.yml --env-file .env.production logs --tail=10 frontend
+            docker-compose -f docker-compose.prod.yml --env-file .env.production logs --tail=10 helpdesk-postgres-prod
           "
 
       - name: 🌐 Test Endpoints
         run: |
           echo "🌐 Testing application endpoints..."
           ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            cd $DEPLOY_DIR
             echo 'Testing internal endpoints...'
             
             # Wait a bit more for full startup
-            sleep 10
+            sleep 15
             
             # Test backend health
             if curl -f http://localhost:3001/health -s; then
@@ -176,7 +207,7 @@ jobs:
             fi
             
             # Test database
-            if docker-compose -f $DEPLOY_DIR/docker-compose.prod.yml exec -T helpdesk-postgres-prod pg_isready -U helpdesk_user; then
+            if docker-compose -f docker-compose.prod.yml --env-file .env.production exec -T helpdesk-postgres-prod pg_isready -U helpdesk_user; then
               echo '✅ Database ready'
             else
               echo '⚠️ Database not ready yet'
