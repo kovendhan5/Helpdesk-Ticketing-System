@@ -1,31 +1,117 @@
 import express from 'express';
 import fs from 'fs';
 import multer from 'multer';
+import os from 'os';
 import path from 'path';
+import { fileURLToPath } from 'url';
 import pool from '../db.js';
 import { authenticateToken, requireAdmin } from '../middleware/auth.js';
 import emailService from '../services/emailService.js';
 
 const router = express.Router();
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = '/app/uploads'; // Use absolute path that matches Dockerfile
-if (!fs.existsSync(uploadsDir)) {
-  try {
-    fs.mkdirSync(uploadsDir, { recursive: true, mode: 0o755 });
-    console.log('✅ Uploads directory created:', uploadsDir);
-  } catch (error) {
-    console.error('❌ Failed to create uploads directory:', error);
-    // Directory should exist from Dockerfile, log but continue
+// Get __dirname equivalent for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Enhanced uploads directory initialization with comprehensive error handling
+let uploadsDir;
+
+function initializeUploadsDirectory() {
+  const possiblePaths = [
+    '/app/uploads',           // Docker production path
+    path.join(process.cwd(), 'uploads'), // Development fallback
+    path.join(__dirname, '../../uploads') // Alternative fallback
+  ];
+
+  for (const dirPath of possiblePaths) {
+    try {
+      // Check if directory exists
+      if (fs.existsSync(dirPath)) {
+        // Verify write permissions
+        try {
+          fs.accessSync(dirPath, fs.constants.W_OK);
+          uploadsDir = dirPath;
+          console.log('✅ Uploads directory verified:', uploadsDir);
+          return true;
+        } catch (permError) {
+          console.warn(`⚠️ No write permission for ${dirPath}:`, permError.message);
+          continue;
+        }
+      }
+
+      // Try to create directory if it doesn't exist
+      fs.mkdirSync(dirPath, { recursive: true, mode: 0o755 });
+      
+      // Verify the created directory is writable
+      fs.accessSync(dirPath, fs.constants.W_OK);
+      
+      uploadsDir = dirPath;
+      console.log('✅ Uploads directory created and verified:', uploadsDir);
+      return true;
+
+    } catch (error) {
+      console.warn(`⚠️ Failed to initialize uploads directory at ${dirPath}:`, {
+        error: error.message,
+        code: error.code,
+        errno: error.errno
+      });
+      continue;
+    }
   }
-} else {
-  console.log('✅ Uploads directory exists:', uploadsDir);
+  // If all paths fail, use a temporary directory as last resort
+  try {
+    const tempDir = path.join(os.tmpdir(), 'helpdesk-uploads');
+    fs.mkdirSync(tempDir, { recursive: true, mode: 0o755 });
+    fs.accessSync(tempDir, fs.constants.W_OK);
+    uploadsDir = tempDir;
+    console.warn('⚠️ Using temporary uploads directory:', uploadsDir);
+    console.warn('⚠️ Files may not persist across container restarts!');
+    return true;
+  } catch (tempError) {
+    console.error('❌ CRITICAL: Cannot create any uploads directory!', tempError);
+    uploadsDir = '/tmp'; // Last resort fallback
+    return false;
+  }
 }
 
-// Configure multer for file uploads
+// Initialize uploads directory
+const uploadsInitialized = initializeUploadsDirectory();
+if (!uploadsInitialized) {
+  console.error('❌ CRITICAL: Uploads functionality may not work properly!');
+}
+
+// Configure multer for file uploads with enhanced error handling
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, uploadsDir);
+    // Double-check uploads directory exists and is writable before each upload
+    try {
+      if (!fs.existsSync(uploadsDir)) {
+        console.warn('⚠️ Uploads directory missing, attempting to recreate...');
+        fs.mkdirSync(uploadsDir, { recursive: true, mode: 0o755 });
+      }
+      
+      // Verify write permissions
+      fs.accessSync(uploadsDir, fs.constants.W_OK);
+      cb(null, uploadsDir);
+    } catch (error) {
+      console.error('❌ Upload destination error:', {
+        directory: uploadsDir,
+        error: error.message,
+        code: error.code
+      });
+        // Try to use a fallback directory
+      try {
+        const fallbackDir = path.join(os.tmpdir(), 'helpdesk-uploads-fallback');
+        fs.mkdirSync(fallbackDir, { recursive: true, mode: 0o755 });
+        fs.accessSync(fallbackDir, fs.constants.W_OK);
+        console.warn('⚠️ Using fallback upload directory:', fallbackDir);
+        cb(null, fallbackDir);
+      } catch (fallbackError) {
+        console.error('❌ Fallback directory also failed:', fallbackError);
+        cb(new Error('Cannot access uploads directory: ' + error.message));
+      }
+    }
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
