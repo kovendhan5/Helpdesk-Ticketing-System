@@ -9,10 +9,17 @@ services:
       POSTGRES_PASSWORD: helpdesk_password
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+    restart: always
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U helpdesk_user -d helpdesk"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   backend:
-    build: ./backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
     environment:
       NODE_ENV: production
       DB_HOST: postgres
@@ -20,21 +27,24 @@ services:
       DB_NAME: helpdesk
       DB_USER: helpdesk_user
       DB_PASSWORD: helpdesk_password
-      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production
+      JWT_SECRET: your-super-secret-jwt-key-change-this-in-production-2024
       PORT: 3001
     ports:
       - "3001:3001"
     depends_on:
-      - postgres
-    restart: unless-stopped
+      postgres:
+        condition: service_healthy
+    restart: always
 
   frontend:
-    build: ./frontend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
     ports:
       - "80:80"
     depends_on:
       - backend
-    restart: unless-stopped
+    restart: always
 
 volumes:
   postgres_data:

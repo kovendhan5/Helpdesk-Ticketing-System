@@ -1,0 +1,44 @@
+name: Emergency Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+    - name: Emergency Deploy
+      uses: appleboy/ssh-action@v1.0.3
+      with:
+        host: ${{ secrets.VM_HOST }}
+        username: ${{ secrets.VM_USER }}
+        key: ${{ secrets.SSH_PRIVATE_KEY }}
+        timeout: 300s
+        script: |
+          echo "=== EMERGENCY RESTART ==="
+          
+          # Force kill everything
+          sudo docker kill $(sudo docker ps -q) 2>/dev/null || true
+          sudo docker rm $(sudo docker ps -aq) 2>/dev/null || true
+          sudo docker system prune -af 2>/dev/null || true
+          
+          # Create simple app directory
+          mkdir -p /home/kovendhan2535/helpdesk
+          cd /home/kovendhan2535/helpdesk
+          
+          # Get code quickly
+          rm -rf * .git 2>/dev/null || true
+          git clone --depth 1 https://github.com/kovendhan5/Helpdesk-Ticketing-System.git . || exit 1
+          
+          # Use the simple compose file
+          sudo docker-compose -f docker-compose.simple.yml up -d --force-recreate --remove-orphans
+          
+          echo "=== CONTAINERS STARTED ==="
+          sudo docker ps
+          
+          echo "=== LOGS ==="
+          sleep 10
+          sudo docker-compose -f docker-compose.simple.yml logs --tail=10
