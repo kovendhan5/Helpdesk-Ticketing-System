@@ -1,0 +1,106 @@
+name: 🔧 Docker Access Workaround
+
+on:
+  workflow_dispatch:
+
+jobs:
+  docker-workaround:
+    name: 🔧 Docker Access Workaround
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🔧 Setup SSH
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🔑 Add VM to known hosts
+        run: |
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+
+      - name: 🔍 Check Current Docker Status
+        run: |
+          echo "🔍 Checking current Docker status..."
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            echo 'Current user: \$(whoami)'
+            echo 'Current groups: \$(groups)'
+            echo 'Docker version: \$(docker --version)'
+            echo 'Testing Docker access:'
+            docker ps 2>&1 || echo 'Docker permission denied (expected)'
+          "
+
+      - name: 📋 Docker Permission Analysis
+        run: |
+          echo "📋 Analyzing Docker permission situation..."
+          ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "
+            echo 'Docker socket permissions:'
+            ls -la /var/run/docker.sock
+            echo 'Docker group info:'
+            getent group docker || echo 'Docker group not found'
+            echo 'Current user ID:'
+            id \$(whoami)
+          "
+
+      - name: 🔧 Alternative Docker Setup Instructions
+        run: |
+          echo "🔧 Docker Permission Issue Detected"
+          echo "=================================="
+          echo ""
+          echo "❌ The user cannot be added to docker group without sudo password access."
+          echo ""
+          echo "🔍 Alternative solutions:"
+          echo ""
+          echo "1️⃣ **Manual VM Access Required** (Recommended):"
+          echo "   • SSH into VM manually: ssh ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}"
+          echo "   • Run: sudo usermod -aG docker \$(whoami)"
+          echo "   • Logout and login again"
+          echo "   • Test: docker ps"
+          echo ""
+          echo "2️⃣ **Use Docker with sudo in deployment** (Alternative):"
+          echo "   • Modify deployment workflow to use 'sudo docker' commands"
+          echo "   • This requires passwordless sudo for docker commands"
+          echo ""
+          echo "3️⃣ **Contact VM Administrator** (If not your VM):"
+          echo "   • Ask admin to add user to docker group"
+          echo "   • Or configure passwordless sudo for docker commands"
+
+      - name: 🚀 Modified Deployment Option
+        run: |
+          echo "🚀 Modified Deployment Option Available"
+          echo "======================================"
+          echo ""
+          echo "💡 **Alternative Approach**: We can create a modified deployment workflow"
+          echo "   that uses 'sudo docker' commands instead of direct docker access."
+          echo ""
+          echo "⚠️  **Requirements for this to work**:"
+          echo "   • User must have passwordless sudo for docker commands, OR"
+          echo "   • Manual docker group addition via VM console access"
+          echo ""
+          echo "🔍 **Next Steps - Choose One**:"
+          echo ""
+          echo "A) **Manual Fix** (Recommended if you have VM access):"
+          echo "   1. Access VM via Google Cloud Console (SSH button)"
+          echo "   2. Run: sudo usermod -aG docker \$(whoami)"
+          echo "   3. Logout/login or restart VM"
+          echo "   4. Run robust deployment workflow"
+          echo ""
+          echo "B) **Use Sudo Docker Deployment** (If manual access not possible):"
+          echo "   1. We'll create a sudo-docker deployment workflow"
+          echo "   2. Configure passwordless sudo for docker (if possible)"
+          echo ""
+          echo "📊 **Recommendation**: Use Option A (manual fix) as it's most reliable."
+
+      - name: 📊 Summary
+        run: |
+          echo "📊 Docker Permission Fix Summary"
+          echo "==============================="
+          echo "❌ Cannot automatically add user to docker group (requires sudo password)"
+          echo "✅ Identified alternative solutions"
+          echo "🎯 **Recommended Action**: Manual VM access to fix docker permissions"
+          echo ""
+          echo "🔗 **VM Access**: Use Google Cloud Console SSH button for VM access"
+          echo "🔗 **VM IP**: ${{ secrets.VM_HOST }}"
+          echo "🔗 **VM User**: ${{ secrets.VM_USER }}"
