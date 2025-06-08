@@ -37,8 +37,10 @@ COPY --from=deps --chown=nodejs:nodejs /app/node_modules ./node_modules
 COPY --chown=nodejs:nodejs src/ ./src/
 COPY --chown=nodejs:nodejs package*.json ./
 
-# Create logs directory
-RUN mkdir -p /app/logs && chown nodejs:nodejs /app/logs
+# Create logs and uploads directories with proper permissions
+RUN mkdir -p /app/logs /app/uploads && \
+  chown -R nodejs:nodejs /app/logs /app/uploads && \
+  chmod -R 755 /app/logs /app/uploads
 
 # Install wget for health checks
 RUN apk add --no-cache wget
