@@ -40,7 +40,7 @@ COPY --chown=nodejs:nodejs package*.json ./
 # Create logs and uploads directories with proper permissions
 RUN mkdir -p /app/logs /app/uploads && \
   chown -R nodejs:nodejs /app/logs /app/uploads && \
-  chmod -R 755 /app/logs /app/uploads
+  chmod -R 777 /app/logs /app/uploads
 
 # Install wget for health checks
 RUN apk add --no-cache wget

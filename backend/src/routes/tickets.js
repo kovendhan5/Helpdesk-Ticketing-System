@@ -19,13 +19,17 @@ let uploadsDir;
 
 function initializeUploadsDirectory() {
   const possiblePaths = [
-    '/app/uploads',           // Docker production path
+    '/app/uploads',           // Docker production path (first priority)
+    path.resolve('/app/uploads'), // Absolute resolved path
     path.join(process.cwd(), 'uploads'), // Development fallback
-    path.join(__dirname, '../../uploads') // Alternative fallback
+    path.join(__dirname, '../../uploads'), // Alternative fallback
+    '/tmp/helpdesk-uploads'   // Last resort temp directory
   ];
 
   for (const dirPath of possiblePaths) {
     try {
+      console.log(`🔍 Trying uploads directory: ${dirPath}`);
+      
       // Check if directory exists
       if (fs.existsSync(dirPath)) {
         // Verify write permissions
