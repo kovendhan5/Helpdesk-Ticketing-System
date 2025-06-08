@@ -1,8 +1,6 @@
-name: Adaptive Deploy
+name: Adaptive Deploy (BACKUP)
 
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 jobs:
