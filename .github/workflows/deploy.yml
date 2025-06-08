@@ -1,8 +1,9 @@
-name: 🚀 Deploy Helpdesk System
+name: 🚀 Deploy Helpdesk System (DISABLED)
 
 on:
-  push:
-    branches: [main]
+  # Disabled automatic deployment - use deploy-robust.yml instead
+  # push:
+  #   branches: [main]
   workflow_dispatch:
 
 jobs:
