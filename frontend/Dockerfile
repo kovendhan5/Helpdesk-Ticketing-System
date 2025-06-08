@@ -26,12 +26,17 @@ ENV PUBLIC_URL=/
 COPY package*.json ./
 
 # Install dependencies including devDependencies for build
-# Add npm configuration for better network handling
+# Enhanced npm configuration for maximum reliability
 RUN npm config set fetch-retry-mintimeout 20000 && \
   npm config set fetch-retry-maxtimeout 120000 && \
   npm config set fetch-retries 5 && \
   npm config set registry https://registry.npmjs.org/ && \
-  npm ci --no-audit --no-fund && \
+  npm config set maxsockets 10 && \
+  npm config set timeout 300000 && \
+  (npm ci --no-audit --no-fund --verbose || \
+  (echo "Retrying with alternative registry..." && \
+  npm config set registry https://registry.yarnpkg.com && \
+  npm ci --no-audit --no-fund --verbose)) && \
   npm cache clean --force
 
 # Copy source code and config files
