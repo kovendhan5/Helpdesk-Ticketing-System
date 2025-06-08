@@ -1,0 +1,64 @@
+name: 🔍 SSH Connection Diagnostic
+
+on:
+  workflow_dispatch:
+
+jobs:
+  ssh-test:
+    name: 🔍 Test SSH Connection
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📋 Check GitHub Secrets
+        run: |
+          echo "🔍 Checking GitHub Secrets availability..."
+          echo "VM_HOST: ${{ secrets.VM_HOST != '' && 'SET' || 'NOT SET' }}"
+          echo "VM_USER: ${{ secrets.VM_USER != '' && 'SET' || 'NOT SET' }}"
+          echo "SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY != '' && 'SET' || 'NOT SET' }}"
+
+      - name: 🔧 Setup SSH Agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: 🔑 Add VM to known hosts
+        run: |
+          echo "🔑 Adding VM to known hosts..."
+          ssh-keyscan -H ${{ secrets.VM_HOST }} >> ~/.ssh/known_hosts
+          echo "Known hosts updated"
+
+      - name: 🧪 Test SSH Connection
+        run: |
+          echo "🧪 Testing SSH connection..."
+          echo "Connecting to: ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }}"
+          
+          # Test basic SSH connection
+          if ssh -o ConnectTimeout=10 -o StrictHostKeyChecking=no ${{ secrets.VM_USER }}@${{ secrets.VM_HOST }} "echo 'SSH connection successful!'; whoami; pwd"; then
+            echo "✅ SSH connection working!"
+          else
+            echo "❌ SSH connection failed!"
+            echo "Debug info:"
+            echo "- VM Host: ${{ secrets.VM_HOST }}"
+            echo "- VM User: ${{ secrets.VM_USER }}"
+            exit 1
+          fi
+
+      - name: 🔍 SSH Debug Information
+        if: failure()
+        run: |
+          echo "🔍 SSH Debug Information"
+          echo "======================="
+          echo "VM_HOST: ${{ secrets.VM_HOST }}"
+          echo "VM_USER: ${{ secrets.VM_USER }}"
+          echo "SSH_PRIVATE_KEY length: ${{ length(secrets.SSH_PRIVATE_KEY) }}"
+          echo ""
+          echo "Possible issues:"
+          echo "1. SSH private key is incorrect or corrupted"
+          echo "2. Public key not properly added to VM ~/.ssh/authorized_keys"
+          echo "3. VM hostname/IP has changed"
+          echo "4. SSH service not running on VM"
+          echo ""
+          echo "To fix:"
+          echo "1. Regenerate SSH key pair on VM"
+          echo "2. Update GitHub Secrets with new private key"
+          echo "3. Verify public key in ~/.ssh/authorized_keys on VM"
