@@ -39,26 +39,28 @@ jobs:
             EOF
 
             # Stop and clean up
-            docker-compose down 2>/dev/null || true
+            docker-compose down --remove-orphans 2>/dev/null || true # Added --remove-orphans
             docker rm -f helpdesk-postgres helpdesk-backend helpdesk-frontend 2>/dev/null || true
             echo "🧹 Previous containers stopped and removed."
 
-            # Forcefully free up port 80
-            echo "🔓 Attempting to free up port 80..."
-            if sudo lsof -t -i:80 > /dev/null; then
-              echo "⚠️ Port 80 is in use. Attempting to kill the process..."
-              sudo kill -9 $(sudo lsof -t -i:80) || echo "Failed to kill process on port 80, or port was already free."
+            # Forcefully free up port 80 from any Docker container
+            echo "🔓 Attempting to free up port 80 by stopping any Docker container using it..."
+            CONTAINER_IDS_ON_PORT_80=$(docker ps -q --filter "publish=80" --filter "status=running")
+            if [ ! -z "$CONTAINER_IDS_ON_PORT_80" ]; then
+              echo "⚠️ Container(s) $CONTAINER_IDS_ON_PORT_80 found running on port 80. Attempting to stop..."
+              docker stop $CONTAINER_IDS_ON_PORT_80 || echo "Attempt to stop container(s) on port 80 failed or they were already stopped."
               sleep 5 # Give a moment for the port to be released
-              if sudo lsof -t -i:80 > /dev/null; then
-                echo "❌ CRITICAL: Failed to free port 80. Another process is still using it."
-                # Optionally, try to find out what it is
-                sudo lsof -i:80
-                # exit 1 # Decide if this should be a fatal error for the script
+              # Verify again
+              STILL_RUNNING_ON_PORT_80=$(docker ps -q --filter "publish=80" --filter "status=running")
+              if [ ! -z "$STILL_RUNNING_ON_PORT_80" ]; then
+                echo "❌ CRITICAL: Failed to free port 80 from Docker containers. Container(s) $STILL_RUNNING_ON_PORT_80 still running on port 80."
+                docker ps -a --filter "publish=80" # Show details
+                # exit 1 # Consider making this a fatal error if port 80 must be free
               else
-                echo "✅ Port 80 should now be free."
+                echo "✅ Port 80 should now be free from running Docker containers."
               fi
             else
-              echo "✅ Port 80 is already free."
+              echo "✅ Port 80 was not in use by any running Docker container."
             fi
 
             # Build services
