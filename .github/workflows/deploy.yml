@@ -8,60 +8,49 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
-      - name: Deploy to VM
+      - name: Deploy to Production VM
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          timeout: 1200s
+          timeout: 900s
           script: |
-            # Navigate to app directory
+            echo "=== Starting Deployment ==="
+
+            # Clean workspace
             cd /home/kovendhan2535
             rm -rf helpdesk-app
-            mkdir -p helpdesk-app
+            mkdir helpdesk-app
             cd helpdesk-app
 
-            # Clone repository
+            # Get latest code
             git clone https://github.com/kovendhan5/Helpdesk-Ticketing-System.git .
 
-            # Create production environment file with secrets
+            # Create environment file
             cat > .env << EOF
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
-            FRONTEND_PORT=${{ secrets.FRONTEND_PORT || '80' }}
+            FRONTEND_PORT=80
             API_URL=http://${{ secrets.VM_HOST }}:3001
             EOF
 
-            # Stop existing containers for this application only
+            # Stop and clean up
             docker-compose down 2>/dev/null || true
-
-            # Remove only this application's containers (safer than global prune)
             docker rm -f helpdesk-postgres helpdesk-backend helpdesk-frontend 2>/dev/null || true
 
-            # Remove unused images for this application only
-            docker images | grep -E "(helpdesk|<none>)" | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
+            # Deploy
+            echo "=== Building and Starting Services ==="
+            docker-compose up -d --build
 
-            # Set Docker buildkit for faster builds
-            export DOCKER_BUILDKIT=1
-            export COMPOSE_DOCKER_CLI_BUILD=1
-
-            # Build backend first (faster)
-            echo "Building backend..."
-            docker-compose build backend
-
-            # Build frontend with extended timeout
-            echo "Building frontend..."
-            docker-compose build frontend
-
-            # Start all services
-            echo "Starting all services..."
-            docker-compose up -d
-
-            # Show status
-            sleep 15
+            # Wait and check
+            sleep 30
+            echo "=== Deployment Status ==="
             docker ps
-            docker-compose logs --tail=20
+            echo "=== Service Health ==="
+            curl -f http://localhost/ >/dev/null 2>&1 && echo "✅ Frontend: OK" || echo "❌ Frontend: FAILED"
+            curl -f http://localhost:3001/health >/dev/null 2>&1 && echo "✅ Backend: OK" || echo "❌ Backend: FAILED"
+            echo "=== Deployment Complete ==="
