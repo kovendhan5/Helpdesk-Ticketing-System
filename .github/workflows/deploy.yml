@@ -1,0 +1,41 @@
+name: Deploy Helpdesk System
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Deploy to VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 600s
+          script: |
+            # Navigate to app directory
+            cd /home/kovendhan2535
+            rm -rf helpdesk-app
+            mkdir -p helpdesk-app
+            cd helpdesk-app
+
+            # Clone repository
+            git clone https://github.com/kovendhan5/Helpdesk-Ticketing-System.git .
+
+            # Stop existing containers
+            docker-compose down 2>/dev/null || true
+            docker container prune -f
+
+            # Build and start services
+            docker-compose up -d --build
+
+            # Show status
+            sleep 15
+            docker ps
+            docker-compose logs --tail=20
