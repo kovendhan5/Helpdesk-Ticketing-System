@@ -8,7 +8,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
 
     steps:
       - name: Deploy to VM
@@ -17,7 +17,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          timeout: 600s
+          timeout: 1200s
           script: |
             # Navigate to app directory
             cd /home/kovendhan2535
@@ -45,8 +45,21 @@ jobs:
             # Remove unused images for this application only
             docker images | grep -E "(helpdesk|<none>)" | awk '{print $3}' | xargs -r docker rmi -f 2>/dev/null || true
 
-            # Build and start services
-            docker-compose up -d --build
+            # Set Docker buildkit for faster builds
+            export DOCKER_BUILDKIT=1
+            export COMPOSE_DOCKER_CLI_BUILD=1
+
+            # Build backend first (faster)
+            echo "Building backend..."
+            docker-compose build backend
+
+            # Build frontend with extended timeout
+            echo "Building frontend..."
+            docker-compose build frontend
+
+            # Start all services
+            echo "Starting all services..."
+            docker-compose up -d
 
             # Show status
             sleep 15
