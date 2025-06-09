@@ -7,7 +7,7 @@ services:
     environment:
       POSTGRES_DB: helpdesk
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
     ports:
       - "5432:5432"
     volumes:
@@ -29,8 +29,8 @@ services:
       - DB_PORT=5432
       - DB_NAME=helpdesk
       - DB_USER=postgres
-      - DB_PASSWORD=postgres
-      - JWT_SECRET=your-super-secret-jwt-key-change-in-production
+      - DB_PASSWORD=${DB_PASSWORD:-postgres}
+      - JWT_SECRET=${JWT_SECRET:-development-only-secret}
       - PORT=3001
     ports:
       - "3001:3001"
@@ -45,9 +45,9 @@ services:
       dockerfile: Dockerfile
     container_name: helpdesk-frontend
     ports:
-      - "80:3000"
+      - "${FRONTEND_PORT:-80}:3000"
     environment:
-      - REACT_APP_API_URL=http://34.173.186.108:3001
+      - REACT_APP_API_URL=${API_URL:-http://localhost:3001}
     depends_on:
       - backend
     restart: unless-stopped
