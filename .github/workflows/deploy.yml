@@ -41,16 +41,68 @@ jobs:
             # Stop and clean up
             docker-compose down 2>/dev/null || true
             docker rm -f helpdesk-postgres helpdesk-backend helpdesk-frontend 2>/dev/null || true
+            echo "🧹 Previous containers stopped and removed."
 
-            # Deploy
-            echo "=== Building and Starting Services ==="
-            docker-compose up -d --build
+            # Build services
+            echo "🛠️ Building services..."
+            if ! docker-compose build; then
+              echo "❌ Docker build failed!"
+              echo "=== Backend Logs (if any) ==="
+              docker-compose logs --tail=50 backend || echo "No backend logs."
+              echo "=== Frontend Logs (if any) ==="
+              docker-compose logs --tail=50 frontend || echo "No frontend logs."
+              exit 1
+            fi
+            echo "✅ Services built successfully."
 
-            # Wait and check
+            # Start services
+            echo "🚀 Starting services..."
+            if ! docker-compose up -d; then
+              echo "❌ Docker compose up failed!"
+              echo "=== Backend Logs ==="
+              docker-compose logs --tail=50 backend || echo "No backend logs."
+              echo "=== Frontend Logs ==="
+              docker-compose logs --tail=50 frontend || echo "No frontend logs."
+              exit 1
+            fi
+            echo "✅ Services started."
+
+            # Wait for services to initialize
+            echo "⏳ Waiting for services to initialize (30 seconds)..."
             sleep 30
-            echo "=== Deployment Status ==="
-            docker ps
-            echo "=== Service Health ==="
-            curl -f http://localhost/ >/dev/null 2>&1 && echo "✅ Frontend: OK" || echo "❌ Frontend: FAILED"
-            curl -f http://localhost:3001/health >/dev/null 2>&1 && echo "✅ Backend: OK" || echo "❌ Backend: FAILED"
-            echo "=== Deployment Complete ==="
+
+            echo "=== Deployment Status (docker ps) ==="
+            docker ps -a
+
+            echo "=== Detailed Container Logs ==="
+            echo "--- Postgres Logs ---"
+            docker-compose logs --tail=30 postgres || echo "No postgres logs."
+            echo "--- Backend Logs ---"
+            docker-compose logs --tail=50 backend || echo "No backend logs."
+            echo "--- Frontend Logs ---"
+            docker-compose logs --tail=50 frontend || echo "No frontend logs."
+
+            echo "=== Service Health Check ==="
+            FRONTEND_OK=false
+            if curl -s -f http://localhost/ >/dev/null 2>&1; then
+              echo "✅ Frontend: OK (Responded to http://localhost/)"
+              FRONTEND_OK=true
+            else
+              echo "❌ Frontend: FAILED (Could not reach http://localhost/)"
+            fi
+
+            BACKEND_OK=false
+            if curl -s -f http://localhost:3001/health >/dev/null 2>&1; then
+              echo "✅ Backend: OK (Responded to http://localhost:3001/health)"
+              BACKEND_OK=true
+            else
+              echo "❌ Backend: FAILED (Could not reach http://localhost:3001/health)"
+            fi
+
+            if $FRONTEND_OK && $BACKEND_OK; then
+              echo "🎉🎉🎉 Deployment SUCCEEDED! 🎉🎉🎉"
+            else
+              echo "🔥🔥🔥 Deployment FAILED! Check logs above. 🔥🔥🔥"
+              exit 1
+            fi
+            echo "=== Deployment Script Complete ==="
