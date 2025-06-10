@@ -7,7 +7,7 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Deploy to Production VM
         uses: appleboy/ssh-action@v1.0.3
@@ -15,7 +15,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          timeout: 900s
+          timeout: 1200s
           script: |
             echo "=== Starting Production Deployment ==="
             cd /home/kovendhan2535
@@ -35,9 +35,18 @@ jobs:
             docker rm -f helpdesk-postgres helpdesk-redis helpdesk-backend helpdesk-frontend 2>/dev/null || true
             echo "Previous containers cleaned up"
             echo "Building services..."
-            docker-compose build
+            echo "Note: Using pre-built frontend to avoid timeout"
+            if ! docker-compose build backend; then
+              echo "Backend build failed!"
+              exit 1
+            fi
+
             echo "Starting services..."
-            docker-compose up -d
+            if ! docker-compose up -d; then
+              echo "Failed to start services!"
+              docker-compose logs --tail=100
+              exit 1
+            fi
             echo "Waiting for services (30s)..."
             sleep 30
             echo "=== Container Status ==="
