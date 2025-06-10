@@ -1,88 +1,65 @@
 name: Deploy Helpdesk System
-
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
   workflow_dispatch:
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 15
-    
     steps:
-    - name: Deploy to Production VM
-      uses: appleboy/ssh-action@v1.0.3
-      with:
-        host: ${{ secrets.VM_HOST }}
-        username: ${{ secrets.VM_USER }}
-        key: ${{ secrets.SSH_PRIVATE_KEY }}
-        timeout: 900s
-        script: |
-          echo "=== Starting Production Deployment ==="
-          
-          # Clean workspace
-          cd /home/kovendhan2535
-          rm -rf helpdesk-app
-          mkdir helpdesk-app
-          cd helpdesk-app
-          
-          # Get latest code
-          git clone https://github.com/kovendhan5/Helpdesk-Ticketing-System.git .
-          
-          # Create environment file
-          cat > .env << 'EOFENV'
-          DB_PASSWORD=${{ secrets.DB_PASSWORD }}
-          JWT_SECRET=${{ secrets.JWT_SECRET }}
-          REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
-          FRONTEND_PORT=8080
-          API_URL=http://${{ secrets.VM_HOST }}:3001
-          EOFENV
-          
-          echo "✅ Environment configured with secrets"
-          
-          # Stop existing containers
-          docker-compose down --remove-orphans 2>/dev/null || true
-          docker rm -f helpdesk-postgres helpdesk-redis helpdesk-backend helpdesk-frontend 2>/dev/null || true
-          echo "✅ Previous containers cleaned up"
-          
-          # Build and start services
-          echo "🛠️ Building services..."
-          docker-compose build
-          
-          echo "🚀 Starting services..."
-          docker-compose up -d
-          
-          # Wait for services
-          echo "⏳ Waiting for services (30s)..."
-          sleep 30
-          
-          # Check status
-          echo "=== Container Status ==="
-          docker ps -a
-          
-          echo "=== Service Health Check ==="
-          FRONTEND_STATUS="FAILED"
-          BACKEND_STATUS="FAILED"
-          
-          if curl -s -f http://localhost:8080/ >/dev/null 2>&1; then
-            FRONTEND_STATUS="OK"
-          fi
-          
-          if curl -s -f http://localhost:3001/health >/dev/null 2>&1; then
-            BACKEND_STATUS="OK"
-          fi
-          
-          echo "Frontend: $FRONTEND_STATUS"
-          echo "Backend: $BACKEND_STATUS"
-          
-          if [ "$FRONTEND_STATUS" = "OK" ] && [ "$BACKEND_STATUS" = "OK" ]; then
-            echo "🎉 DEPLOYMENT SUCCESSFUL! 🎉"
-            echo "🌐 Frontend: http://34.173.186.108:8080"
-            echo "🔗 Backend: http://34.173.186.108:3001/health"
-          else
-            echo "❌ DEPLOYMENT FAILED!"
-            echo "=== Container Logs ==="
-            docker-compose logs --tail=50
-            exit 1
-          fi
+      - name: Deploy to Production VM
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 900s
+          script: |
+            echo "=== Starting Production Deployment ==="
+            cd /home/kovendhan2535
+            rm -rf helpdesk-app
+            mkdir helpdesk-app
+            cd helpdesk-app
+            git clone https://github.com/kovendhan5/Helpdesk-Ticketing-System.git .
+            cat > .env << 'EOFENV'
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            FRONTEND_PORT=8080
+            API_URL=http://${{ secrets.VM_HOST }}:3001
+            EOFENV
+            echo "Environment configured with secrets"
+            docker-compose down --remove-orphans 2>/dev/null || true
+            docker rm -f helpdesk-postgres helpdesk-redis helpdesk-backend helpdesk-frontend 2>/dev/null || true
+            echo "Previous containers cleaned up"
+            echo "Building services..."
+            docker-compose build
+            echo "Starting services..."
+            docker-compose up -d
+            echo "Waiting for services (30s)..."
+            sleep 30
+            echo "=== Container Status ==="
+            docker ps -a
+            echo "=== Service Health Check ==="
+            FRONTEND_STATUS="FAILED"
+            BACKEND_STATUS="FAILED"
+            if curl -s -f http://localhost:8080/ >/dev/null 2>&1; then
+              FRONTEND_STATUS="OK"
+            fi
+            if curl -s -f http://localhost:3001/health >/dev/null 2>&1; then
+              BACKEND_STATUS="OK"
+            fi
+            echo "Frontend: $FRONTEND_STATUS"
+            echo "Backend: $BACKEND_STATUS"
+            if [ "$FRONTEND_STATUS" = "OK" ] && [ "$BACKEND_STATUS" = "OK" ]; then
+              echo "DEPLOYMENT SUCCESSFUL!"
+              echo "Frontend: http://34.173.186.108:8080"
+              echo "Backend: http://34.173.186.108:3001/health"
+            else
+              echo "DEPLOYMENT FAILED!"
+              echo "=== Container Logs ==="
+              docker-compose logs --tail=50
+              exit 1
+            fi
