@@ -90,10 +90,10 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// Rate limiting for different endpoints - Increased limits for testing
+// Rate limiting for different endpoints - PRODUCTION SECURITY
 app.use('/api/auth/login', createRateLimiter({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  maxRequests: 100, // Increased from 5 to 100 attempts per window
+  maxRequests: 5, // Maximum 5 login attempts per 15 minutes
   message: 'Too many login attempts, please try again later'
 }));
 

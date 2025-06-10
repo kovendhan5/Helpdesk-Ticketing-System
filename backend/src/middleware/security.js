@@ -16,7 +16,7 @@ const ipRequests = new Map();
 export function createRateLimiter(options = {}) {
   const {
     windowMs = 15 * 60 * 1000, // 15 minutes
-    maxRequests = 100,
+    maxRequests = 5, // Production default: 5 attempts
     message = 'Too many requests, please try again later',
     skipSuccessfulRequests = false
   } = options;
