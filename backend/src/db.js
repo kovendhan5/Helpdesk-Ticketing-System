@@ -18,6 +18,13 @@ if (!process.env.JWT_SECRET) {
   process.exit(1);
 }
 
+// Check for Redis password if Redis is enabled
+if (process.env.REDIS_HOST && !process.env.REDIS_PASSWORD) {
+  console.error('❌ SECURITY ERROR: REDIS_PASSWORD environment variable is required when using Redis');
+  console.error('   Generate one with: openssl rand -base64 24');
+  process.exit(1);
+}
+
 // Database connection configuration
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
