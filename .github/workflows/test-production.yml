@@ -1,0 +1,118 @@
+name: Test Production Infrastructure
+on:
+  workflow_dispatch:
+    inputs:
+      test_message:
+        description: "Test deployment message"
+        required: false
+        default: "Testing production environment"
+
+jobs:
+  test-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Test Production Deployment
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 300s
+          script: |
+            echo "=== PRODUCTION INFRASTRUCTURE TEST ==="
+            echo "Test message: ${{ github.event.inputs.test_message }}"
+            echo "Timestamp: $(date)"
+
+            # Clean up any existing test containers
+            docker stop production-test 2>/dev/null || true
+            docker rm production-test 2>/dev/null || true
+
+            # Create test directory
+            cd /home/${{ secrets.VM_USER }}
+            rm -rf test-deployment
+            mkdir test-deployment
+            cd test-deployment
+
+            # Create simple test files
+            cat > test-simple.html << 'EOF'
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Production Test Success</title>
+                <style>
+                    body { font-family: Arial, sans-serif; text-align: center; padding: 50px; background: #f0f8ff; }
+                    .success { color: #28a745; font-size: 24px; margin: 20px; }
+                    .info { background: white; padding: 20px; border-radius: 10px; margin: 20px auto; max-width: 500px; }
+                </style>
+            </head>
+            <body>
+                <h1>🎉 Production Environment Test</h1>
+                <div class="success">✅ SUCCESS!</div>
+                <div class="info">
+                    <p>✅ GitHub Actions: WORKING</p>
+                    <p>✅ Docker: WORKING</p>
+                    <p>✅ Networking: WORKING</p>
+                    <p>✅ Server: 34.173.186.108</p>
+                    <p>Deployed: $(date)</p>
+                </div>
+            </body>
+            </html>
+            EOF
+
+            # Create simple Dockerfile
+            cat > Dockerfile << 'EOF'
+            FROM nginx:alpine
+            COPY test-simple.html /usr/share/nginx/html/index.html
+            RUN echo '{"status":"healthy","timestamp":"'$(date -Iseconds)'"}' > /usr/share/nginx/html/health.json
+            EXPOSE 80
+            EOF
+
+            # Build and run test container
+            echo "Building test container..."
+            docker build -t production-test .
+
+            echo "Starting test container..."
+            docker run -d --name production-test -p 8080:80 production-test
+
+            # Wait for container to start
+            sleep 10
+
+            # Test the deployment
+            echo "=== TESTING DEPLOYMENT ==="
+            if curl -f http://localhost:8080 >/dev/null 2>&1; then
+                echo "✅ FRONTEND TEST: SUCCESS"
+                FRONTEND_OK=true
+            else
+                echo "❌ FRONTEND TEST: FAILED"
+                FRONTEND_OK=false
+            fi
+
+            if curl -f http://localhost:8080/health.json >/dev/null 2>&1; then
+                echo "✅ HEALTH CHECK: SUCCESS"
+                HEALTH_OK=true
+            else
+                echo "❌ HEALTH CHECK: FAILED"  
+                HEALTH_OK=false
+            fi
+
+            # Show container status
+            echo "=== CONTAINER STATUS ==="
+            docker ps -a | grep production-test
+
+            # Final result
+            if [ "$FRONTEND_OK" = true ] && [ "$HEALTH_OK" = true ]; then
+                echo ""
+                echo "🎉 PRODUCTION INFRASTRUCTURE TEST: SUCCESS!"
+                echo "✅ Production environment is ready for deployment"
+                echo "✅ Frontend accessible at: http://34.173.186.108:8080"
+                echo "✅ Health check at: http://34.173.186.108:8080/health.json"
+                echo ""
+                echo "Ready to deploy the full Helpdesk Ticketing System!"
+            else
+                echo ""
+                echo "❌ PRODUCTION INFRASTRUCTURE TEST: FAILED"
+                echo "Infrastructure issues need to be resolved first"
+                docker logs production-test --tail=20
+                exit 1
+            fi

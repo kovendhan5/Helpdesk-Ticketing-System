@@ -1,0 +1,16 @@
+version: "3.8"
+
+services:
+  test-app:
+    build:
+      context: .
+      dockerfile: Dockerfile.test
+    container_name: production-test
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
