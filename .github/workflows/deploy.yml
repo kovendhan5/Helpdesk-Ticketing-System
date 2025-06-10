@@ -34,51 +34,15 @@ jobs:
             cat > .env << EOF
             DB_PASSWORD=${{ secrets.DB_PASSWORD }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
-            FRONTEND_PORT=80
+            FRONTEND_PORT=8080
             API_URL=http://${{ secrets.VM_HOST }}:3001
-            EOF
-
-            # Stop and clean up
-            docker-compose down --remove-orphans 2>/dev/null || true # Added --remove-orphans
+            EOF            # Stop and clean up
+            docker-compose down --remove-orphans 2>/dev/null || true
             docker rm -f helpdesk-postgres helpdesk-backend helpdesk-frontend 2>/dev/null || true
             echo "🧹 Previous containers stopped and removed."
 
-            echo "🔎 Checking what is using port 80 before attempting to free it..."
-            sudo ss -tulnp | grep ':80' || echo "Port 80 does not appear to be in use by any process (checked with ss)."
-
-            # Forcefully free up port 80
-            echo "🔓 Attempting to free up port 80..."
-            # First, try to stop any Docker container using it
-            CONTAINER_IDS_ON_PORT_80=$(docker ps -q --filter "publish=80" --filter "status=running")
-            if [ ! -z "$CONTAINER_IDS_ON_PORT_80" ]; then
-              echo "⚠️ Docker Container(s) $CONTAINER_IDS_ON_PORT_80 found running on port 80. Attempting to stop..."
-              docker stop $CONTAINER_IDS_ON_PORT_80 || echo "Attempt to stop Docker container(s) on port 80 failed or they were already stopped."
-              sleep 5 # Give a moment for the port to be released
-            else
-              echo "✅ No running Docker containers found on port 80."
-            fi
-
-            # As a more forceful measure, try to kill any process using port 80
-            # This requires sudo and might not work if the user running the script doesn't have passwordless sudo
-            # or if fuser is not installed.
-            echo "🔪 Attempting to kill any process on port 80 using 'sudo fuser -k 80/tcp'..."
-            if sudo fuser -k 80/tcp; then
-              echo "✅ Successfully killed process(es) on port 80 (if any were running)."
-              sleep 5 # Give a moment for the port to be released
-            else
-              echo "⚠️ Could not kill process on port 80 using 'fuser' or no process was using it. This might be okay or might require manual intervention on the VM if port conflicts persist."
-            fi
-
-            # Verify again
-            echo "🔎 Verifying port 80 status after attempting to free it..."
-            if sudo ss -tulnp | grep ':80'; then
-              echo "❌ CRITICAL: Port 80 still appears to be in use after attempts to free it."
-              # exit 1 # Consider making this a fatal error
-            else
-              echo "✅ Port 80 appears to be free."
-            fi
-
             # Build services
+            echo "🛠️ Building services..."
             echo "🛠️ Building services..."
             if ! docker-compose build; then
               echo "❌ Docker build failed!"
@@ -119,11 +83,11 @@ jobs:
 
             echo "=== Service Health Check ==="
             FRONTEND_OK=false
-            if curl -s -f http://localhost/ >/dev/null 2>&1; then
-              echo "✅ Frontend: OK (Responded to http://localhost/)"
+            if curl -s -f http://localhost:8080/ >/dev/null 2>&1; then
+              echo "✅ Frontend: OK (Responded to http://localhost:8080/)"
               FRONTEND_OK=true
             else
-              echo "❌ Frontend: FAILED (Could not reach http://localhost/)"
+              echo "❌ Frontend: FAILED (Could not reach http://localhost:8080/)"
             fi
 
             BACKEND_OK=false

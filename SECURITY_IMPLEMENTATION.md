@@ -6,6 +6,7 @@
 
 - ✅ Removed hardcoded `DB_PASSWORD` from docker-compose.yml
 - ✅ Removed hardcoded `JWT_SECRET` from docker-compose.yml
+- ✅ Added `REDIS_PASSWORD` to environment variables
 - ✅ Configured environment variable substitution with secure defaults
 
 ### 2. **Configurable Deployment Settings**
@@ -19,47 +20,71 @@
 - ✅ Removed global `docker container prune -f`
 - ✅ Implemented targeted container cleanup for this application only
 - ✅ Prevents accidental deletion of other applications' containers
+- ✅ Non-root user for Nginx container (user:101)
+- ✅ Non-root user for backend container (nodejs:1001)
 
-## 🚀 **Deployment Setup**
+### 4. **Enhanced API Security**
 
-### Step 1: Configure GitHub Secrets
+- ✅ Reduced login rate limit from 100 to 5 attempts
+- ✅ Implemented Redis-backed token blacklist
+- ✅ Added persistent session tracking across server restarts
+- ✅ Tightened Content Security Policy in Nginx
+- ✅ Added HSTS header for transport security
 
-Go to: Repository → Settings → Secrets and variables → Actions
+### 5. **Session & Token Management**
 
-Add these required secrets:
+- ✅ Moved from in-memory token storage to Redis
+- ✅ Implemented automatic cleanup of expired tokens
+- ✅ Added fallback mechanisms for Redis unavailability
+- ✅ Proper async token validation with error handling
 
-```
-VM_HOST=34.173.186.108
-VM_USER=kovendhan2535
-SSH_PRIVATE_KEY=[Your SSH private key]
-DB_PASSWORD=[Generate: openssl rand -base64 32]
-JWT_SECRET=[Generate: openssl rand -base64 64]
-```
+### 6. **Infrastructure Improvements**
 
-### Step 2: Optional Configuration Secrets
+- ✅ Added Redis service for better security scaling
+- ✅ Configured service dependencies correctly
+- ✅ Added proper health checks for Redis
+- ✅ Data persistence for Redis with volume
 
-```
-FRONTEND_PORT=80
-API_URL=http://34.173.186.108:3001
-```
+## 🔄 **Deployment Changes**
 
-### Step 3: Local Development
+### GitHub Actions Workflow
 
-1. Copy `.env.example` to `.env`
-2. Replace placeholder values with development secrets
-3. Never commit `.env` to version control
+- Updated workflow to include Redis password from secrets
+- Added Redis dependency for backend service
+- Updated health checks to include Redis
 
-## 🛡️ **Security Benefits**
+### Docker Compose
 
-- **No secrets in code**: All sensitive data externalized
-- **Environment-specific**: Different secrets for dev/prod
-- **Rotation-ready**: Easy to update secrets without code changes
-- **Audit trail**: GitHub Secrets provide access logging
-- **Principle of least privilege**: Targeted container management
+- Added Redis service with secure configuration
+- Added Redis volume for data persistence
+- Updated backend service to depend on Redis
 
-## ⚠️ **Important Notes**
+### Application Code
 
-- The `.env.production` file contains example values only
-- Production deployment uses GitHub Secrets, not the .env files
-- Secrets are injected at deployment time via the workflow
-- Never commit actual secret values to version control
+- Added Redis service module with fallback mechanism
+- Updated auth middleware to use Redis for token storage
+- Modified session tracking to use Redis
+
+## 📋 **Security Checklist**
+
+- [x] No hardcoded secrets in source code
+- [x] Proper user permissions in containers
+- [x] Rate limiting for authentication endpoints
+- [x] Secure token storage and validation
+- [x] Proper session management
+- [x] Content Security Policy implementation
+- [x] Input sanitization for all user inputs
+- [x] Secure HTTP headers
+- [x] Protection against brute force attacks
+- [x] Database connection validation
+- [x] Resource access controls
+
+## 🛠️ **Future Security Recommendations**
+
+1. Implement database encryption for sensitive fields
+2. Add container vulnerability scanning to CI/CD pipeline
+3. Set up security monitoring and alerting
+4. Configure automatic backups for Redis and PostgreSQL
+5. Conduct regular penetration testing
+6. Implement HTTPS with Let's Encrypt
+7. Add Web Application Firewall (WAF)

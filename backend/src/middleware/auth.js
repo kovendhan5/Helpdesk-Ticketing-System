@@ -1,6 +1,7 @@
 import crypto from 'crypto';
 import dotenv from 'dotenv';
 import jwt from 'jsonwebtoken';
+import redisService from '../services/redisService.js';
 
 dotenv.config();
 
@@ -13,14 +14,8 @@ const JWT_CONFIG = {
   audience: 'helpdesk-users'
 };
 
-// Token blacklist (use Redis in production)
-const tokenBlacklist = new Set();
-
-// Session tracking
-const activeSessions = new Map();
-
 // Middleware to verify JWT token with enhanced security
-export const authenticateToken = (req, res, next) => {
+export const authenticateToken = async (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
 
@@ -32,7 +27,8 @@ export const authenticateToken = (req, res, next) => {
   }
 
   // Check if token is blacklisted
-  if (tokenBlacklist.has(token)) {
+  const isBlacklisted = await redisService.isTokenBlacklisted(token);
+  if (isBlacklisted) {
     return res.status(403).json({ 
       error: 'Token has been revoked',
       code: 'REVOKED_TOKEN'
@@ -46,19 +42,13 @@ export const authenticateToken = (req, res, next) => {
     });
 
     // Check if session is still active
-    const sessionKey = `${decoded.id}:${decoded.sessionId}`;
-    if (!activeSessions.has(sessionKey)) {
+    const session = await redisService.getSession(decoded.id, decoded.sessionId);
+    if (!session) {
       return res.status(403).json({ 
         error: 'Session expired or invalid',
         code: 'INVALID_SESSION'
       });
     }
-
-    // Update session activity
-    activeSessions.set(sessionKey, {
-      ...activeSessions.get(sessionKey),
-      lastActivity: Date.now()
-    });
 
     req.user = decoded;
     req.token = token;
@@ -94,7 +84,7 @@ export const requireAdmin = (req, res, next) => {
 };
 
 // Generate enhanced JWT token with additional security claims
-export const generateToken = (user, tokenType = 'access') => {
+export const generateToken = async (user, tokenType = 'access') => {
   const sessionId = crypto.randomUUID();
   const issuedAt = Math.floor(Date.now() / 1000);
   
@@ -118,14 +108,13 @@ export const generateToken = (user, tokenType = 'access') => {
 
   // Track active session
   if (tokenType === 'access') {
-    const sessionKey = `${user.id}:${sessionId}`;
-    activeSessions.set(sessionKey, {
+    await redisService.storeSession(user.id, sessionId, {
       userId: user.id,
       sessionId,
       createdAt: Date.now(),
       lastActivity: Date.now(),
-      userAgent: null, // Set this when creating session
-      ipAddress: null  // Set this when creating session
+      userAgent: null,
+      ipAddress: null
     });
   }
 
@@ -133,71 +122,31 @@ export const generateToken = (user, tokenType = 'access') => {
 };
 
 // Revoke token (logout)
-export const revokeToken = (token, sessionId, userId) => {
+export const revokeToken = async (token, sessionId, userId) => {
   if (token) {
-    tokenBlacklist.add(token);
+    await redisService.blacklistToken(token);
   }
   
   if (sessionId && userId) {
-    const sessionKey = `${userId}:${sessionId}`;
-    activeSessions.delete(sessionKey);
-  }
-};
-
-// Revoke all user sessions
-export const revokeAllUserSessions = (userId) => {
-  for (const [sessionKey, session] of activeSessions.entries()) {
-    if (session.userId === userId) {
-      activeSessions.delete(sessionKey);
-    }
-  }
-};
-
-// Clean expired sessions
-export const cleanExpiredSessions = () => {
-  const now = Date.now();
-  const maxInactivity = 24 * 60 * 60 * 1000; // 24 hours
-
-  for (const [sessionKey, session] of activeSessions.entries()) {
-    if (now - session.lastActivity > maxInactivity) {
-      activeSessions.delete(sessionKey);
-    }
+    await redisService.deleteSession(userId, sessionId);
   }
 };
 
 // Middleware to track session information
-export const trackSession = (req, res, next) => {
+export const trackSession = async (req, res, next) => {
   if (req.user && req.user.sessionId) {
-    const sessionKey = `${req.user.id}:${req.user.sessionId}`;
-    const session = activeSessions.get(sessionKey);
+    const session = await redisService.getSession(req.user.id, req.user.sessionId);
     
     if (session) {
-      session.userAgent = req.get('User-Agent');
-      session.ipAddress = req.ip || req.connection.remoteAddress;
-      session.lastActivity = Date.now();
-      activeSessions.set(sessionKey, session);
-    }
-  }
-  next();
-};
-
-// Get user's active sessions
-export const getUserSessions = (userId) => {
-  const userSessions = [];
-  
-  for (const [sessionKey, session] of activeSessions.entries()) {
-    if (session.userId === userId) {
-      userSessions.push({
-        sessionId: session.sessionId,
-        createdAt: new Date(session.createdAt),
-        lastActivity: new Date(session.lastActivity),
-        userAgent: session.userAgent,
-        ipAddress: session.ipAddress
+      await redisService.storeSession(req.user.id, req.user.sessionId, {
+        ...session,
+        userAgent: req.get('User-Agent'),
+        ipAddress: req.ip || req.connection.remoteAddress,
+        lastActivity: Date.now()
       });
     }
   }
-  
-  return userSessions;
+  next();
 };
 
 // Validate JWT configuration
@@ -215,17 +164,34 @@ export const validateJWTConfig = () => {
   }
 };
 
-// Clean up interval (call this on server startup)
-setInterval(cleanExpiredSessions, 60 * 60 * 1000); // Clean every hour
+// Get user sessions
+export const getUserSessions = async (userId) => {
+  const sessions = await redisService.getSession(userId, '*');
+  return sessions || [];
+};
+
+// Revoke all user sessions
+export const revokeAllUserSessions = async (userId) => {
+  try {
+    const sessions = await getUserSessions(userId);
+    for (const session of sessions) {
+      await redisService.deleteSession(userId, session.sessionId);
+    }
+    return true;
+  } catch (error) {
+    console.error('Error revoking all user sessions:', error);
+    return false;
+  }
+};
 
 export default {
   authenticateToken,
   requireAdmin,
   generateToken,
   revokeToken,
-  revokeAllUserSessions,
   trackSession,
   getUserSessions,
+  revokeAllUserSessions,
   validateJWTConfig,
   JWT_CONFIG
 };
