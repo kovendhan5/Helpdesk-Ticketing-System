@@ -182,18 +182,76 @@ npm test
 
 ## 📦 Deployment
 
-### Production Deployment
+### 🚀 Quick Production Deployment
 
-1. Set up your production server
-2. Configure environment variables
-3. Run the deployment script:
+#### Windows
+```batch
+# Run the production deployment script
+deploy-production.bat
+```
 
+#### Linux/macOS
 ```bash
-# Using GitHub Actions (automated)
-git push origin main
+# Make the script executable and run
+chmod +x deploy-production.sh
+./deploy-production.sh
+```
 
-# Manual deployment
-docker-compose -f docker-compose.yml up -d --build
+### 🌐 GCP VM Deployment (Automated)
+
+Deploy automatically to your Google Cloud Platform VM using GitHub Actions:
+
+#### 1. Setup GitHub Secrets
+```bash
+# Required secrets in GitHub repository settings:
+# - SSH_PRIVATE_KEY (already configured ✅)
+# - DB_PASSWORD 
+# - JWT_SECRET
+# - REDIS_PASSWORD
+```
+
+#### 2. Configure VM Details
+Update `.github/workflows/deploy-production.yml` with your VM details:
+```yaml
+env:
+  GCP_VM_IP: "34.173.186.108"        # Your VM IP
+  GCP_VM_USER: "kovendhan2535"       # Your VM username
+```
+
+#### 3. Deploy
+```bash
+# Commit and push to trigger deployment
+git add .
+git commit -m "Deploy to GCP VM"
+git push origin main
+```
+
+#### 4. Access Your App
+- **Frontend:** http://34.173.186.108:8080
+- **Backend:** http://34.173.186.108:3001
+- **Health Check:** http://34.173.186.108:3001/health
+
+📋 **Setup Guide:** See [GITHUB_SECRETS_SETUP.md](GITHUB_SECRETS_SETUP.md) for detailed instructions.
+
+### 📊 System Management
+
+#### Monitor System Health
+```batch
+# Windows
+monitor-system.bat
+
+# Linux/macOS
+docker-compose ps
+docker-compose logs
+```
+
+#### Backup System
+```batch
+# Windows
+backup-system.bat
+
+# Linux/macOS  
+docker-compose exec postgres pg_dump -U postgres helpdesk > backup_$(date +%Y%m%d).sql
 ```
 
 ### Environment Variables for Production
@@ -201,10 +259,38 @@ docker-compose -f docker-compose.yml up -d --build
 ```env
 DB_PASSWORD=strong_production_password
 JWT_SECRET=secure_jwt_secret_at_least_32_chars
+REDIS_PASSWORD=secure_redis_password
 FRONTEND_PORT=8080
-API_URL=https://your-domain.com:3001
 NODE_ENV=production
 ```
+
+### Manual Deployment Steps
+
+1. **Clone and Setup**
+   ```bash
+   git clone https://github.com/kovendhan5/Helpdesk-Ticketing-System.git
+   cd Helpdesk-Ticketing-System
+   cp .env.example .env
+   # Edit .env with your production values
+   ```
+
+2. **Deploy with Docker**
+   ```bash
+   docker-compose up -d --build
+   ```
+
+3. **Verify Deployment**
+   ```bash
+   curl http://localhost:3001/health
+   curl http://localhost:8080
+   ```
+
+### 🔄 CI/CD Deployment
+
+The project includes GitHub Actions for automated deployment:
+- Push to `main` branch triggers automatic deployment
+- Includes security checks and health verification
+- Supports deployment to GCP, AWS, or any Docker-compatible platform
 
 ## 🔒 Security Features
 

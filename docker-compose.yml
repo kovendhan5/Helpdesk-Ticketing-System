@@ -1,4 +1,5 @@
-version: "3.8"
+# Helpdesk Ticketing System - Docker Compose Configuration
+# Production-ready configuration with health checks and security
 
 services:
   postgres:
