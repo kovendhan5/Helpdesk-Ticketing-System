@@ -17,6 +17,22 @@ dist/
 backend/.env
 frontend/.env
 
+# SSH Keys - SECURITY: Never commit private keys!
+*.pem
+*_key
+*_key.pub
+helpdesk_production_key*
+gcp_helpdesk_key*
+*.ppk
+SSH_KEY_BACKUP.md
+
+# Temporary and debug files
+debug-*.bat
+test-*.bat
+troubleshoot-*.bat
+*-temp.*
+*.tmp
+
 # Database and sensitive configuration
 docker-compose.override.yml
 *.pem
