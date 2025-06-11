@@ -1,4 +1,4 @@
-name: Deploy Production Test
+name: Deploy Helpdesk System
 on:
   push:
     branches:
@@ -7,97 +7,115 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
-      - name: Deploy Simple Test to Production
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Test SSH Connection
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          timeout: 600s
+          timeout: 30s
           script: |
-            echo "=== PRODUCTION INFRASTRUCTURE TEST ==="
-            echo "Timestamp: $(date)"
+            echo "SSH connection successful!"
+            echo "Server: $(hostname)"
+            echo "User: $(whoami)"
+            echo "Date: $(date)"
 
-            # Clean up any existing containers
-            docker stop production-test 2>/dev/null || true
-            docker rm production-test 2>/dev/null || true
-            docker stop helpdesk-frontend helpdesk-backend helpdesk-postgres helpdesk-redis 2>/dev/null || true
-            docker rm helpdesk-frontend helpdesk-backend helpdesk-postgres helpdesk-redis 2>/dev/null || true
+      - name: Deploy Application
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.VM_HOST }}
+          username: ${{ secrets.VM_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          timeout: 900s
+          script: |
+            echo "=== HELPDESK SYSTEM DEPLOYMENT ==="
+            echo "Starting deployment at: $(date)"
 
-            # Create test directory
+            # Navigate to deployment directory
             cd /home/${{ secrets.VM_USER }}
-            rm -rf test-deployment
-            mkdir test-deployment
-            cd test-deployment
 
-            # Clone the repository to get test files
+            # Clean up previous deployment
+            rm -rf helpdesk-deployment
+            mkdir helpdesk-deployment
+            cd helpdesk-deployment
+
+            # Clone repository
+            echo "Cloning repository..."
             git clone https://github.com/kovendhan5/Helpdesk-Ticketing-System.git .
 
-            # Build and run the simple test
-            echo "Building test application..."
-            if docker build -f Dockerfile.test -t production-test .; then
-                echo "✅ Build successful"
-            else
-                echo "❌ Build failed"
-                exit 1
+            # Create environment file
+            echo "Configuring environment..."
+            cat > .env << 'EOFENV'
+            DB_PASSWORD=${{ secrets.DB_PASSWORD }}
+            JWT_SECRET=${{ secrets.JWT_SECRET }}
+            REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}
+            FRONTEND_PORT=8080
+            API_URL=http://${{ secrets.VM_HOST }}:3001
+            EOFENV
+
+            # Stop any existing containers
+            echo "Cleaning up existing containers..."
+            docker-compose down --remove-orphans 2>/dev/null || true
+            docker stop helpdesk-postgres helpdesk-redis helpdesk-backend helpdesk-frontend 2>/dev/null || true
+            docker rm helpdesk-postgres helpdesk-redis helpdesk-backend helpdesk-frontend 2>/dev/null || true
+
+            # Build and start services
+            echo "Building services..."
+            if ! docker-compose build; then
+              echo "Build failed!"
+              exit 1
             fi
 
-            echo "Starting test application..."
-            if docker run -d --name production-test -p 8080:80 production-test; then
-                echo "✅ Container started"
-            else
-                echo "❌ Container failed to start"
-                exit 1
+            echo "Starting services..."
+            if ! docker-compose up -d; then
+              echo "Failed to start services!"
+              docker-compose logs --tail=20
+              exit 1
             fi
 
-            # Wait for container to be ready
-            echo "Waiting for service to start..."
-            sleep 15
+            # Wait for services to be ready
+            echo "Waiting for services to initialize..."
+            sleep 30
 
-            # Test the deployment
+            # Test deployment
             echo "=== TESTING DEPLOYMENT ==="
             FRONTEND_OK=false
-            HEALTH_OK=false
+            BACKEND_OK=false
 
             if curl -f -s http://localhost:8080 >/dev/null 2>&1; then
-                echo "✅ FRONTEND TEST: SUCCESS"
-                FRONTEND_OK=true
+              echo "✅ Frontend: WORKING"
+              FRONTEND_OK=true
             else
-                echo "❌ FRONTEND TEST: FAILED"
+              echo "❌ Frontend: FAILED"
             fi
 
-            if curl -f -s http://localhost:8080/health.json >/dev/null 2>&1; then
-                echo "✅ HEALTH CHECK: SUCCESS"
-                HEALTH_OK=true
+            if curl -f -s http://localhost:3001/health >/dev/null 2>&1; then
+              echo "✅ Backend: WORKING"
+              BACKEND_OK=true
             else
-                echo "❌ HEALTH CHECK: FAILED (this is ok for simple test)"
-                HEALTH_OK=true  # Don't fail on health check for simple test
+              echo "❌ Backend: FAILED"
             fi
 
             # Show container status
             echo "=== CONTAINER STATUS ==="
-            docker ps | grep production-test || echo "No running container found"
-            docker ps -a | grep production-test
-
-            # Show container logs if there are issues
-            if [ "$FRONTEND_OK" = false ]; then
-                echo "=== CONTAINER LOGS ==="
-                docker logs production-test --tail=20
-            fi
+            docker-compose ps
 
             # Final result
-            if [ "$FRONTEND_OK" = true ]; then
-                echo ""
-                echo "🎉 PRODUCTION INFRASTRUCTURE TEST: SUCCESS!"
-                echo "✅ Production environment is working correctly"
-                echo "✅ Frontend accessible at: http://${{ secrets.VM_HOST }}:8080"
-                echo ""
-                echo "Production infrastructure verified - ready for full deployment!"
+            if [ "$FRONTEND_OK" = true ] && [ "$BACKEND_OK" = true ]; then
+              echo ""
+              echo "🎉 DEPLOYMENT SUCCESSFUL!"
+              echo "Frontend: http://${{ secrets.VM_HOST }}:8080"
+              echo "Backend: http://${{ secrets.VM_HOST }}:3001/health"
+              echo "Deployment completed at: $(date)"
             else
-                echo ""
-                echo "❌ PRODUCTION INFRASTRUCTURE TEST: FAILED"
-                echo "Need to investigate infrastructure issues"
-                exit 1
+              echo ""
+              echo "❌ DEPLOYMENT FAILED!"
+              echo "=== LOGS FOR DEBUGGING ==="
+              docker-compose logs --tail=30
+              exit 1
             fi
