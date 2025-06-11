@@ -9,7 +9,7 @@ on:
 
 env:
   GCP_VM_IP: "34.55.113.9"
-  GCP_VM_USER: "kovendhan2535"
+  GCP_VM_USER: "helpdesk-production-deployment-2025"
   GCP_VM_ZONE: "us-central1-a"
   DOCKER_BACKEND_IMAGE: "kovendhan5/helpdesk-backend"
   DOCKER_FRONTEND_IMAGE: "kovendhan5/helpdesk-frontend"
