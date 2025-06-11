@@ -95,12 +95,55 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Verify Required Secrets
+        run: |
+          echo "🔍 Checking required secrets..."
+          
+          if [ -z "${{ secrets.SSH_PRIVATE_KEY }}" ]; then
+            echo "❌ SSH_PRIVATE_KEY secret is missing!"
+            echo "Please add your SSH private key to GitHub Secrets"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.DB_PASSWORD }}" ]; then
+            echo "❌ DB_PASSWORD secret is missing!"
+            echo "Please add database password to GitHub Secrets"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.JWT_SECRET }}" ]; then
+            echo "❌ JWT_SECRET secret is missing!"
+            echo "Please add JWT secret to GitHub Secrets"
+            exit 1
+          fi
+          
+          if [ -z "${{ secrets.REDIS_PASSWORD }}" ]; then
+            echo "❌ REDIS_PASSWORD secret is missing!"
+            echo "Please add Redis password to GitHub Secrets"
+            exit 1
+          fi
+          
+          echo "✅ All required secrets are configured"
+
       - name: Setup SSH key
         run: |
+          echo "🔑 Setting up SSH key..."
           mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          
+          # Write SSH key and verify it's not empty
           echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          if [ ! -s ~/.ssh/id_rsa ]; then
+            echo "❌ SSH private key is empty!"
+            exit 1
+          fi
+          
           chmod 600 ~/.ssh/id_rsa
+          
+          # Add VM to known hosts
           ssh-keyscan -H ${{ env.GCP_VM_IP }} >> ~/.ssh/known_hosts
+          
+          echo "✅ SSH key setup complete"
 
       - name: Test SSH Connection
         run: |
