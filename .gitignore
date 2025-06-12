@@ -23,6 +23,7 @@ frontend/.env
 *_key.pub
 helpdesk_production_key*
 gcp_helpdesk_key*
+fresh_deploy_key*
 *.ppk
 SSH_KEY_BACKUP.md
 
