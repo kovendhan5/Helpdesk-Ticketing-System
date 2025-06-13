@@ -20,7 +20,7 @@ echo ✅ SSH working
 
 echo.
 echo [2] Cloning from GitHub to server...
-ssh -i %SSH_KEY% %SSH_USER%@%SERVER_IP% "rm -rf helpdesk-app && git clone https://github.com/your-username/Helpdesk-Ticketing-System.git helpdesk-app"
+ssh -i %SSH_KEY% %SSH_USER%@%SERVER_IP% "rm -rf helpdesk-app && git clone https://github.com/kovendhan5/Helpdesk-Ticketing-System.git helpdesk-app"
 
 echo.
 echo [3] Creating environment file on server...
