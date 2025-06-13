@@ -18,6 +18,12 @@ backend/.env
 frontend/.env
 
 # SSH Keys - SECURITY: Never commit private keys!
+production_key
+production_key.pub
+*_key
+*_key.pub
+*.pem
+*.ppk
 *.pem
 *_key
 *_key.pub
