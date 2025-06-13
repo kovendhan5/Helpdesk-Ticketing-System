@@ -10,7 +10,13 @@ import {
     createRateLimiter,
     sanitizeInput,
     securityHeaders,
-    securityLogger
+    securityLogger,
+    sessionManagement,
+    intrusionDetection,
+    advancedRequestValidation,
+    apiVersioning,
+    enhancedSecurityLogger,
+    geolocationSecurity
 } from './middleware/security.js';
 import authRoutes from './routes/auth.js';
 import ticketRoutes from './routes/tickets.js';
@@ -36,8 +42,13 @@ const PORT = process.env.PORT || 3001;
 app.locals.websocket = websocketService;
 
 // Security middleware (applied first)
-app.use(securityLogger());
+app.use(enhancedSecurityLogger());
 app.use(securityHeaders());
+app.use(geolocationSecurity());
+app.use(intrusionDetection());
+app.use(advancedRequestValidation());
+app.use(apiVersioning());
+app.use(sessionManagement());
 
 // Enhanced Helmet configuration for security headers
 app.use(helmet({

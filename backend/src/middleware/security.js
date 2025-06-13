@@ -7,6 +7,10 @@ import crypto from 'crypto';
 // In-memory store for rate limiting and login attempts (use Redis in production)
 const loginAttempts = new Map();
 const ipRequests = new Map();
+// Advanced security tracking
+const sessionStore = new Map();
+const suspiciousActivity = new Map();
+const ipGeolocation = new Map();
 
 /**
  * Rate limiting middleware
@@ -293,6 +297,276 @@ export function csrfProtection() {
   };
 }
 
+/**
+ * Enhanced session management middleware
+ */
+export function sessionManagement() {
+  return (req, res, next) => {
+    const sessionId = req.headers['x-session-id'] || crypto.randomUUID();
+    const userId = req.user?.id;
+    const ip = req.ip || req.connection.remoteAddress;
+    
+    if (userId) {
+      const sessionKey = `${userId}:${sessionId}`;
+      const now = Date.now();
+      
+      // Check for concurrent session limits
+      const userSessions = Array.from(sessionStore.entries())
+        .filter(([key]) => key.startsWith(`${userId}:`));
+      
+      const maxConcurrentSessions = parseInt(process.env.SESSION_MAX_CONCURRENT) || 3;
+      
+      if (userSessions.length >= maxConcurrentSessions) {
+        // Remove oldest session
+        const oldestSession = userSessions
+          .sort(([,a], [,b]) => a.lastActivity - b.lastActivity)[0];
+        if (oldestSession) {
+          sessionStore.delete(oldestSession[0]);
+        }
+      }
+      
+      // Update session info
+      sessionStore.set(sessionKey, {
+        userId,
+        ip,
+        userAgent: req.headers['user-agent'],
+        lastActivity: now,
+        createdAt: sessionStore.get(sessionKey)?.createdAt || now
+      });
+      
+      req.sessionId = sessionId;
+    }
+    
+    next();
+  };
+}
+
+/**
+ * Intrusion detection middleware
+ */
+export function intrusionDetection() {
+  return (req, res, next) => {
+    const ip = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'] || 'unknown';
+    const now = Date.now();
+    
+    // Track suspicious patterns
+    const suspiciousPatterns = [
+      /sql.*inject/i,
+      /<script.*>/i,
+      /union.*select/i,
+      /\.\.\/.*\.\.\//,
+      /eval\s*\(/i,
+      /document\.cookie/i
+    ];
+    
+    const requestString = `${req.url} ${JSON.stringify(req.body)} ${JSON.stringify(req.query)}`;
+    const isSuspicious = suspiciousPatterns.some(pattern => pattern.test(requestString));
+    
+    if (isSuspicious) {
+      if (!suspiciousActivity.has(ip)) {
+        suspiciousActivity.set(ip, { count: 0, firstSeen: now, patterns: [] });
+      }
+      
+      const activity = suspiciousActivity.get(ip);
+      activity.count++;
+      activity.lastSeen = now;
+      activity.patterns.push({
+        url: req.url,
+        method: req.method,
+        timestamp: now,
+        userAgent
+      });
+      
+      // Log security event
+      console.warn(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        event: 'suspicious_activity_detected',
+        ip,
+        url: req.url,
+        method: req.method,
+        userAgent,
+        pattern: 'injection_attempt'
+      }));
+      
+      // Block if too many suspicious attempts
+      if (activity.count > 5) {
+        return res.status(403).json({
+          error: 'Suspicious activity detected. Access denied.',
+          code: 'SECURITY_VIOLATION'
+        });
+      }
+    }
+    
+    next();
+  };
+}
+
+/**
+ * Advanced request validation middleware
+ */
+export function advancedRequestValidation() {
+  return (req, res, next) => {
+    // Request size validation
+    const maxRequestSize = parseInt(process.env.REQUEST_SIZE_LIMIT) || 10485760; // 10MB
+    const contentLength = parseInt(req.headers['content-length']) || 0;
+    
+    if (contentLength > maxRequestSize) {
+      return res.status(413).json({
+        error: 'Request too large',
+        code: 'REQUEST_TOO_LARGE',
+        maxSize: maxRequestSize
+      });
+    }
+    
+    // Request timeout validation
+    const requestStartTime = Date.now();
+    const timeout = parseInt(process.env.REQUEST_TIMEOUT) || 30000; // 30 seconds
+    
+    const timeoutHandler = setTimeout(() => {
+      if (!res.headersSent) {
+        res.status(408).json({
+          error: 'Request timeout',
+          code: 'REQUEST_TIMEOUT'
+        });
+      }
+    }, timeout);
+    
+    res.on('finish', () => {
+      clearTimeout(timeoutHandler);
+    });
+    
+    // Enhanced header validation
+    const requiredHeaders = ['user-agent', 'accept'];
+    const missingHeaders = requiredHeaders.filter(header => !req.headers[header]);
+    
+    if (missingHeaders.length > 0 && process.env.REQUEST_VALIDATION_STRICT === 'true') {
+      return res.status(400).json({
+        error: 'Missing required headers',
+        code: 'MISSING_HEADERS',
+        missing: missingHeaders
+      });
+    }
+    
+    req.requestStartTime = requestStartTime;
+    next();
+  };
+}
+
+/**
+ * API versioning middleware
+ */
+export function apiVersioning() {
+  return (req, res, next) => {
+    const apiVersion = req.headers['api-version'] || process.env.API_VERSION || 'v1';
+    const supportedVersions = ['v1'];
+    
+    if (!supportedVersions.includes(apiVersion)) {
+      return res.status(400).json({
+        error: 'Unsupported API version',
+        code: 'UNSUPPORTED_VERSION',
+        supported: supportedVersions,
+        requested: apiVersion
+      });
+    }
+    
+    req.apiVersion = apiVersion;
+    res.setHeader('API-Version', apiVersion);
+    next();
+  };
+}
+
+/**
+ * Enhanced security logging middleware
+ */
+export function enhancedSecurityLogger() {
+  return (req, res, next) => {
+    const startTime = Date.now();
+    const ip = req.ip || req.connection.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+    const sessionId = req.sessionId;
+    const userId = req.user?.id;
+    
+    // Log request details if security logging is enabled
+    if (process.env.LOG_SECURITY_EVENTS === 'true') {
+      console.log(JSON.stringify({
+        timestamp: new Date().toISOString(),
+        event: 'http_request',
+        method: req.method,
+        url: req.url,
+        ip,
+        userAgent,
+        sessionId,
+        userId,
+        headers: {
+          'content-length': req.headers['content-length'],
+          'content-type': req.headers['content-type'],
+          'authorization': req.headers.authorization ? '[PRESENT]' : '[ABSENT]'
+        }
+      }));
+    }
+    
+    // Override res.json to log responses
+    const originalJson = res.json;
+    res.json = function(data) {
+      const endTime = Date.now();
+      const duration = endTime - startTime;
+      
+      // Log security-relevant responses
+      if (process.env.LOG_SECURITY_EVENTS === 'true') {
+        const isSecurityEvent = req.url.includes('/auth/') || 
+                               res.statusCode >= 400 ||
+                               req.method !== 'GET';
+        
+        if (isSecurityEvent) {
+          console.log(JSON.stringify({
+            timestamp: new Date().toISOString(),
+            event: 'http_response',
+            method: req.method,
+            url: req.url,
+            statusCode: res.statusCode,
+            duration,
+            ip,
+            userId,
+            sessionId,
+            hasError: res.statusCode >= 400
+          }));
+        }
+      }
+      
+      return originalJson.call(this, data);
+    };
+    
+    next();
+  };
+}
+
+/**
+ * Geolocation-based access control (basic implementation)
+ */
+export function geolocationSecurity() {
+  return (req, res, next) => {
+    if (process.env.GEO_BLOCKING_ENABLED !== 'true') {
+      return next();
+    }
+    
+    const ip = req.ip || req.connection.remoteAddress;
+    const allowedCountries = (process.env.ALLOWED_COUNTRIES || '').split(',');
+    const blockedCountries = (process.env.BLOCKED_COUNTRIES || '').split(',');
+    
+    // Simple implementation - in production, use a proper geolocation service
+    const isLocalhost = ip === '127.0.0.1' || ip === '::1' || ip.startsWith('192.168.') || ip.startsWith('10.');
+    
+    if (isLocalhost) {
+      return next(); // Allow localhost
+    }
+    
+    // For demo purposes, we'll allow all non-localhost IPs
+    // In production, integrate with a geolocation service
+    next();
+  };
+}
+
 export default {
   createRateLimiter,
   loginRateLimiter,
@@ -300,5 +574,11 @@ export default {
   securityHeaders,
   securityLogger,
   generateCSRFToken,
-  csrfProtection
+  csrfProtection,
+  sessionManagement,
+  intrusionDetection,
+  advancedRequestValidation,
+  apiVersioning,
+  enhancedSecurityLogger,
+  geolocationSecurity
 };
