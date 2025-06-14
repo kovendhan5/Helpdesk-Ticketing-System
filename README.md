@@ -223,6 +223,5 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Version**: 2.0.0  
 **Last Updated**: June 13, 2025  
-**Maintained by**: Your Development Team
 
 [![Star this repo](https://img.shields.io/github/stars/kovendhan5/helpdesk-ticketing-system?style=social)](https://github.com/yourusername/helpdesk-ticketing-system/stargazers)
