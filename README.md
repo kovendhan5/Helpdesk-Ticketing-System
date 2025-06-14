@@ -1,9 +1,9 @@
 # 🎫 Helpdesk Ticketing System v2.0
 
-[![Build Status](https://github.com/yourusername/helpdesk-ticketing-system/workflows/CI%2FCD/badge.svg)](https://github.com/yourusername/helpdesk-ticketing-system/actions)
+[![Build Status](https://github.com/kovendhan5/helpdesk-ticketing-system/workflows/CI%2FCD/badge.svg)](https://github.com/kovendhan5/helpdesk-ticketing-system/actions)
 [![Security Score](https://img.shields.io/badge/Security-A+-brightgreen)](./SECURITY.md)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](./LICENSE)
-[![Version](https://img.shields.io/badge/Version-2.0.0-success.svg)](https://github.com/yourusername/helpdesk-ticketing-system/releases)
+[![Version](https://img.shields.io/badge/Version-2.0.0-success.svg)](https://github.com/kovendhan5/helpdesk-ticketing-system/releases)
 
 A modern, secure, and scalable helpdesk ticketing system built with React, Node.js, and PostgreSQL. Features real-time updates, comprehensive security measures, and enterprise-grade deployment capabilities.
 
@@ -193,10 +193,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Documentation**: [GitHub Wiki](https://github.com/yourusername/helpdesk-ticketing-system/wiki)
-- **Issues**: [GitHub Issues](https://github.com/yourusername/helpdesk-ticketing-system/issues)
+- **Documentation**: [GitHub Wiki](https://github.com/kovendhan5/helpdesk-ticketing-system/wiki)
+- **Issues**: [GitHub Issues](https://github.com/kovendhan5/helpdesk-ticketing-system/issues)
 - **Security**: See [SECURITY.md](./SECURITY.md) for security reporting
-- **Discussions**: [GitHub Discussions](https://github.com/yourusername/helpdesk-ticketing-system/discussions)
+- **Discussions**: [GitHub Discussions](https://github.com/kovendhan5/helpdesk-ticketing-system/discussions)
 
 ## 🎯 Roadmap
 
@@ -225,4 +225,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Last Updated**: June 13, 2025  
 **Maintained by**: Your Development Team
 
-[![Star this repo](https://img.shields.io/github/stars/yourusername/helpdesk-ticketing-system?style=social)](https://github.com/yourusername/helpdesk-ticketing-system/stargazers)
+[![Star this repo](https://img.shields.io/github/stars/kovendhan5/helpdesk-ticketing-system?style=social)](https://github.com/yourusername/helpdesk-ticketing-system/stargazers)
